@@ -1,8 +1,7 @@
 # "Unnamed game"
 
 ## Synopsis
-The king has outlawed beer. A very unpopular decision.
-An ex-royal guard turned brewer is the only man who can keep the country running, and eventually right this wrong.
+The kingdom has become unstable after the king banned beer. Riots are common, and a few brave peasants risks their lives every day to supply the thirsty population.
 
 ## Map concept
 The full map is divided into sectors. Each sector is a X\*Y grid of tiles that each has different properties.

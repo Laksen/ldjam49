@@ -1,0 +1,28 @@
+{
+    "tiles": {
+        "grass":
+        {
+            "sprite": "assets/grass.png",
+            "tile-width": 256,
+            "tile-height": 256,
+            "tile-interval": 1.0,
+            "behavior": []
+        },
+        "field":
+        {
+            "sprite": "assets/field.png",
+            "tile-width": 256,
+            "tile-height": 256,
+            "tile-interval": 1.0,
+            "behavior": ["harvestable", "field"]
+        },
+        "hops":
+        {
+            "sprite": "assets/grass.png",
+            "tile-width": 256,
+            "tile-height": 256,
+            "tile-interval": 1.0,
+            "behavior": ["harvestable", "hops"]
+        }
+    }
+}

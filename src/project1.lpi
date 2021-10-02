@@ -117,6 +117,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="GameFont"/>
       </Unit>
+      <Unit>
+        <Filename Value="ldmap.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

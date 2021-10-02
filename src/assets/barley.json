@@ -1,0 +1,32 @@
+{
+    "name": "barley",
+    "texture": "assets/barley.png",
+    "tile-width": 64,
+    "tile-height": 64,
+    "animations": {
+        "stage0": [
+            { "frame": 0, "time": 0.25 },
+            { "frame": 1, "time": 0.25 },
+            { "frame": 2, "time": 0.25 },
+            { "frame": 3, "time": 0.25 }
+        ],
+        "stage1": [
+            { "frame": 4, "time": 0.25 },
+            { "frame": 5, "time": 0.25 },
+            { "frame": 6, "time": 0.25 },
+            { "frame": 7, "time": 0.25 }
+        ],
+        "stage2": [
+            { "frame": 8, "time": 0.25 },
+            { "frame": 9, "time": 0.25 },
+            { "frame": 10, "time": 0.25 },
+            { "frame": 11, "time": 0.25 }
+        ],
+        "stage3": [
+            { "frame": 12, "time": 0.25 },
+            { "frame": 13, "time": 0.25 },
+            { "frame": 14, "time": 0.25 },
+            { "frame": 15, "time": 0.25 }
+        ]
+    }
+}

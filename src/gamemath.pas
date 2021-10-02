@@ -12,10 +12,12 @@ uses
 type
   TPVector = record
     X,Y,Z: double;
-    class function New(AX,AY,AZ: double): TPVector; static;
+    class function New(AX,AY: double; AZ: double = 0): TPVector; static;
 
     function Length: double;
     function LengthSqr: double;
+
+    function Normalize: TPVector;
 
     function Dot(const A: TPVector): double;
 
@@ -24,7 +26,10 @@ type
 
     function Add(const A: TPVector): TPVector;
     function Sub(const A: TPVector): TPVector;
+    function Multiply(const A: TPVector): TPVector;
     function Scale(const A: double): TPVector;
+
+    class function Cross(A,B: TPVector): TPVector; static;
   end;
 
   TPRect = record
@@ -59,6 +64,8 @@ type
 
     constructor Ortho(const ALeft, ARight, ABottom, ATop, AZNear, AZFar: double);
 		constructor Perspective(const AFovY, AAspectRatio, AZNear, AZFar: double);
+
+    constructor LookAt(ATarget, AOrigin, AUp: TPVector);
 
     procedure Load(const AMatrix: TPMatrix);
 
@@ -124,9 +131,9 @@ constructor TPMatrix.CreateTranslation(AX, AY, AZ: double);
 begin
   Identity;
 
-  V[3] :=AX;
-  V[7] :=AY;
-  V[11]:=AZ;
+  V[12]:=AX;
+  V[13]:=AY;
+  V[14]:=AZ;
 
   fIsIdentity:=false;
   fIsTranslation:=true;
@@ -249,6 +256,33 @@ begin
   fIsTranslation:=false;
 end;
 
+constructor TPMatrix.LookAt(ATarget, AOrigin, AUp: TPVector);
+var
+  zaxis, yaxis, xaxis: TPVector;
+begin
+  Identity;
+
+  zaxis:=ATarget.Sub(AOrigin).Normalize;
+  xaxis:=TPVector.Cross(zaxis, AUp).Normalize;
+  yaxis:=TPVector.Cross(xaxis, zaxis);
+
+  {V:=[xaxis.x, xaxis.y, xaxis.z, 0,
+      yaxis.x, yaxis.y, yaxis.z, 0,
+      zaxis.x, zaxis.y, zaxis.z, 0,
+      //xaxis.dot(AOrigin), yaxis.dot(AOrigin), zaxis.dot(AOrigin), 1];
+      -AOrigin.x, -AOrigin.y, -AOrigin.z, 1];}
+
+  zaxis:=zaxis.Scale(-1);
+
+  V:=[xaxis.x, yaxis.x, zaxis.x, 0,
+      xaxis.y, yaxis.y, zaxis.y, 0,
+      xaxis.z, yaxis.z, zaxis.z, 0,
+      -xaxis.dot(AOrigin), -yaxis.dot(AOrigin), -zaxis.dot(AOrigin), 1];
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
 procedure TPMatrix.Load(const AMatrix: TPMatrix);
 begin
   v:=AMatrix.V;
@@ -351,7 +385,7 @@ begin
 end;
 
 
-class function TPVector.New(AX, AY, AZ: double): TPVector;
+class function TPVector.New(AX, AY: double; AZ: double): TPVector;
 begin
   result.X:=AX;
   result.Y:=AY;
@@ -368,6 +402,17 @@ end;
 function TPVector.LengthSqr: double;
 begin
   result:=sqr(X)+sqr(Y)+sqr(Z);
+end;
+
+function TPVector.Normalize: TPVector;
+var
+  l: Double;
+begin
+  l:=Length;
+  if l<>0 then
+    result:=Scale(1/l)
+  else
+    result:=TPVector.New(0,0,0);
 end;
 
 function TPVector.Dot(const A: TPVector): double;
@@ -403,11 +448,25 @@ begin
   result.Z:=Z-A.Z;
 end;
 
+function TPVector.Multiply(const A: TPVector): TPVector;
+begin
+  result.X:=X*A.X;
+  result.Y:=Y*A.Y;
+  result.Z:=Z*A.Z;
+end;
+
 function TPVector.Scale(const A: double): TPVector;
 begin
   result.X:=X*A;
   result.Y:=Y*A;
   result.Z:=Z*A;
+end;
+
+class function TPVector.Cross(A, B: TPVector): TPVector;
+begin
+  result.X:=A.Y*B.Z-A.Z*B.Y;
+  result.y:=A.z*B.x-A.x*B.z;
+  result.z:=A.x*B.y-A.y*B.x;
 end;
 
 end.

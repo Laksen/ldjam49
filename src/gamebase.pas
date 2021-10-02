@@ -28,11 +28,15 @@ type
   TGameElement = class
   private
     fPosition: TPVector;
+    fVisible: boolean;
   protected
     procedure Update(AGame: TGameBase; ATimeMS: double); virtual;
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); virtual;
   public
+    constructor Create;
+
     property Position: TPVector read fPosition write fPosition;
+    property Visible: boolean read fVisible write fVisible;
   end;
 
   TGameTexture = class
@@ -77,7 +81,7 @@ type
     fMouseStartX: Double;
 
     fToFree,
-    fElements: TList;
+    fElements: TJSArray;
 
     fState: TGameBaseState;
 
@@ -114,7 +118,7 @@ type
   public
     Viewport: TGameViewport;
 
-    procedure AddElement(AElement: TGameElement);
+    function AddElement(AElement: TGameElement): TGameElement;
     procedure RemoveElement(AElement: TGameElement; AFreeLater: boolean=false);
 
     constructor Create;
@@ -239,16 +243,23 @@ begin
 
   fWidth:=ASrc.Width;
   fHeight:=ASrc.Height;
-
+                       
+  gl.bindTexture(gl.TEXTURE_2D, fID);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ASrc);
 
   if IsPowerOf2(ASrc.width) and IsPowerOf2(ASrc.height) then
-    gl.generateMipmap(gl.TEXTURE_2d)
+  begin
+    gl.generateMipmap(gl.TEXTURE_2d);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+  end
   else
   begin
-     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   end;
 end;
 
@@ -264,6 +275,12 @@ end;
 
 procedure TGameElement.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 begin
+end;
+
+constructor TGameElement.Create;
+begin
+  inherited Create;
+  Visible:=true;
 end;
 
 function TGameBase.OnResize(Event: TEventListenerEvent): boolean;
@@ -349,6 +366,8 @@ procedure TGameBase.OnRequestFrame(aTime: TJSDOMHighResTimeStamp);
 begin
   gl.viewport(0,0,fWidth,fHeight);
 
+  GL.clearColor(0,0,0,1);
+  GL.enable(gl.DEPTH_TEST);
   GL.clear(GL.COLOR_BUFFER_BIT or GL.DEPTH_BUFFER_BIT);
 
   case fState of
@@ -421,9 +440,9 @@ begin
   for el in fElements do
     TGameElement(el).Update(self, ATimeMS);
 
-  for i:=0 to fToFree.Count-1 do
+  for i:=0 to fToFree.Length-1 do
     TGameElement(fToFree[i]).Destroy;
-  fToFree.Clear;
+  fToFree:=TJSArray.new;
 end;
 
 procedure TGameBase.Render;
@@ -431,31 +450,39 @@ var
   el: JSValue;
 begin
   for el in fElements do
-    TGameElement(el).Render(GL, Viewport);
+    if TGameElement(el).Visible then
+      TGameElement(el).Render(GL, Viewport);
 end;
 
-procedure TGameBase.AddElement(AElement: TGameElement);
+function TGameBase.AddElement(AElement: TGameElement): TGameElement;
 begin
-  fElements.Add(AElement);
+  fElements.push(AElement);
+  result:=AElement;
 end;
 
 procedure TGameBase.RemoveElement(AElement: TGameElement; AFreeLater: boolean);
+var
+  idx: NativeInt;
 begin
-  if fElements.Remove(AElement)>=0 then
-    exit;
+  idx:=fElements.indexOf(AElement);
+  if idx>-1 then
+    fElements.splice(idx, 1);
 
   if AFreeLater then
-    fToFree.Add(AElement);
+    fToFree.push(AElement);
 end;
 
 constructor TGameBase.Create;
 begin
   inherited Create;
   fAudio:=TGameAudio.Create;
-  fToFree:=TList.Create;
+  fToFree:=TJSArray.new;
   fState:=bsStart;
 
-  fElements:=TList.Create();
+  Viewport.Projection:=TPMatrix.Identity;
+  Viewport.ModelView:=TPMatrix.Identity;
+
+  fElements:=TJSArray.new;
 
   canvas:=document.getElementById('c') as TJSHTMLCanvasElement;
   GL:=canvas.getContext('webgl') as TJSWebGLRenderingContext;

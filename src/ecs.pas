@@ -6,6 +6,7 @@ interface
 
 uses
   GameBase,
+  JS,
   Classes, SysUtils,
   contnrs;
 
@@ -13,21 +14,22 @@ type
   TECComponent = class;
   TECSystem = class;
 
-  TBytes = array of byte;
+  TComponentData = TJSMap;
 
   TECEntity = class
   private
     fIndex: longint;
     fSystem: TECSystem;
-    fComponentData: array of TBytes;
-    function GetData(AComponent: longint): TBytes;
+    fComponentData: array of TComponentData;
+    function GetData(AComponent: longint): TComponentData;
   protected
-    procedure AllocateData(AComponent: longint; ASize: SizeInt);
+    procedure AllocateData(AComponent: longint);
     property Index: longint read fIndex write fIndex;
 
-    property Data[AComponent: longint]: TBytes read GetData;
+    property Data[AComponent: longint]: TComponentData read GetData;
   public
     constructor Create(ASystem: TECSystem);
+    destructor Destroy; override;
 
     procedure AddComponent(AComponent: TECComponent);
     procedure RemoveComponent(AComponent: TECComponent);
@@ -39,13 +41,17 @@ type
   private
     fIndex: longint;
   protected
-    function DataSize: sizeint; virtual;
+    function GetName: string; virtual;
+    function GetData(AEntity: TECEntity): TJSMap;
+
+    function HasData: boolean; virtual;
 
     procedure Init(AEntity{%H-}: TECEntity); virtual;
     procedure DeInit(AEntity{%H-}: TECEntity); virtual;
     procedure Update(AEntity{%H-}: TECEntity; ADeltaMS{%H-}, ATimeMS{%H-}: double); virtual;
 
     property Index: longint read fIndex write fIndex;
+    property Name: string read GetName;
   public
   end;
 
@@ -65,6 +71,7 @@ type
   private
     fFirst: boolean;
     fDelta, fLastTime: Double;
+    function GetComponent(const AName: string): TECComponent;
   protected
     procedure Update(AGame: TGameBase; ATimeMS: double); override;
   public
@@ -79,13 +86,28 @@ type
     procedure AddComponent(AEntity: TECEntity; AComponent: TECComponent);
     procedure RemoveComponent(AEntity: TECEntity; AComponent: TECComponent);
     function  HasComponent(AEntity: TECEntity; AComponent: TECComponent): boolean;
+
+    property Component[const AName: string]: TECComponent read GetComponent;
   end;
+
+var
+  EntitySystem: TECSystem;
 
 implementation
 
-function TECComponent.DataSize: sizeint;
+function TECComponent.GetName: string;
 begin
-  result:=0;
+  result:=''
+end;
+
+function TECComponent.GetData(AEntity: TECEntity): TJSMap;
+begin
+  result:=AEntity.Data[Index];
+end;
+
+function TECComponent.HasData: boolean;
+begin
+  result:=false;
 end;
 
 procedure TECComponent.Init(AEntity: TECEntity);
@@ -100,24 +122,31 @@ procedure TECComponent.Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double);
 begin
 end;
 
-function TECEntity.GetData(AComponent: longint): TBytes;
+function TECEntity.GetData(AComponent: longint): TComponentData;
 begin
   result:=fComponentData[AComponent];
 end;
 
-procedure TECEntity.AllocateData(AComponent: longint; ASize: SizeInt);
+procedure TECEntity.AllocateData(AComponent: longint);
 begin
   if AComponent>high(fComponentData) then
     setlength(fComponentData, AComponent+1);
 
-  if Length(fComponentData[AComponent])<>ASize then
-    SetLength(fComponentData[AComponent], ASize);
+  if fComponentData[AComponent] = nil then
+    fComponentData[AComponent]:=TJSMap.new;
 end;
 
 constructor TECEntity.Create(ASystem: TECSystem);
 begin
   inherited Create;
   fSystem:=ASystem;
+  fSystem.AddEntity(self);
+end;
+
+destructor TECEntity.Destroy;
+begin
+  fSystem.RemoveEntity(self);
+  inherited Destroy;
 end;
 
 procedure TECEntity.AddComponent(AComponent: TECComponent);
@@ -150,6 +179,9 @@ begin
       setlength(fComponentUsed[i], l);
   end;
 
+  for i:=0 to high(fComponentUsed) do
+    fComponentUsed[i][fEntityCount]:=false;
+
   result:=fEntityCount;
   inc(fEntityCount);
 end;
@@ -164,15 +196,26 @@ begin
   begin
     fEntities[AIndex]:=fEntities[fEntityCount];
     for i:=0 to high(fComponentUsed) do
-      fComponentUsed[AIndex]:=fComponentUsed[fEntityCount];
+      fComponentUsed[i][AIndex]:=fComponentUsed[i][fEntityCount];
   end;
+end;
+
+function TECSystem.GetComponent(const AName: string): TECComponent;
+var
+  i: Integer;
+begin
+  result:=nil;
+
+  for i:=0 to fComponents.Count-1 do
+    if TECComponent(fComponents[i]).Name=AName then
+      exit(TECComponent(fComponents[i]));
 end;
 
 procedure TECSystem.Update(AGame: TGameBase; ATimeMS: double);
 var
   i, i2: longint;
   e: TECEntity;
-begin
+begin                    
   fDelta:=ATimeMS-fLastTime;
   fLastTime:=ATimeMS;
   if fFirst then
@@ -243,9 +286,8 @@ begin
 
   fComponentUsed[AComponent.Index][AEntity.Index]:=true;
 
-  ds:=AComponent.DataSize;
-  if ds>0 then
-    AEntity.AllocateData(AComponent.Index, ds); 
+  if AComponent.HasData then
+    AEntity.AllocateData(AComponent.Index);
   AComponent.Init(AEntity);
 end;
 
@@ -262,6 +304,9 @@ function TECSystem.HasComponent(AEntity: TECEntity; AComponent: TECComponent): b
 begin
   result:=fComponentUsed[AComponent.Index][AEntity.Index];
 end;
+
+initialization
+  EntitySystem:=TECSystem.Create;
 
 end.
 

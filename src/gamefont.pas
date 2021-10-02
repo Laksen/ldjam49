@@ -53,14 +53,52 @@ type
     class procedure Render(GL: TJSWebGLRenderingContext; res: TTextRun; AViewport: TGameViewport; AColor: TGameColor);
   end;
 
-var
-  MSDFShader: TGameShader = nil;
+procedure LoadFont(const AName, ASrcInfo: string; ASrcImage: TGameTexture);
+
+function GetFont(const AName: string): TGameFont;
 
 implementation
 
 const
-  VertShader = 'attribute vec2 uv; attribute vec3 position; uniform mat4 projectionMatrix; uniform mat4 modelViewMatrix; varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
-  FragShader = '#ifdef GL_OES_standard_derivatives'#13#10'#extension GL_OES_standard_derivatives : enable'#13#10'#endif'#13#10'precision highp float; uniform float opacity; uniform vec3 color; uniform sampler2D map; varying vec2 vUv; float median(float r, float g, float b) { return max(min(r, g), min(max(r, g), b)); } void main() { vec3 sample = texture2D(map, vUv).rgb; float sigDist = median(sample.r, sample.g, sample.b) - 0.5; float alpha = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0); gl_FragColor = vec4(color.xyz, alpha * opacity); if (gl_FragColor.a < 0.0001) discard; }';
+  VertShader = 'attribute vec2 uv;'+
+               'attribute vec3 position;'+
+               'uniform mat4 projectionMatrix;'+
+               'uniform mat4 modelViewMatrix;'+
+               'varying vec2 vUv;'+
+               'void main() {'+
+               '  vUv = uv;'+
+               '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);'+
+               '}';
+  FragShader = '#ifdef GL_OES_standard_derivatives'#13#10+
+               '#extension GL_OES_standard_derivatives : enable'#13#10+
+               '#endif'#13#10+
+               'precision highp float;'+
+               'uniform float opacity;'+
+               'uniform vec3 color;'+
+               'uniform sampler2D map;'+
+               'varying vec2 vUv;'+
+               'float median(float r, float g, float b) { return max(min(r, g), min(max(r, g), b)); }'+
+               'void main() {'+
+               '  vec3 sample = texture2D(map, vUv).rgb;'+
+               '  float sigDist = median(sample.r, sample.g, sample.b) - 0.5;'+
+               '  float alpha = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0);'+
+               '  gl_FragColor = vec4(color.xyz, alpha * opacity);'+
+               '  if (gl_FragColor.a < 0.0001) discard;'+
+               '}';
+ 
+var
+  MSDFShader: TGameShader = nil;
+  Fonts: tjsmap;
+
+procedure LoadFont(const AName, ASrcInfo: string; ASrcImage: TGameTexture);
+begin
+  Fonts.&set(aname, TGameFont.Create(ASrcInfo, ASrcImage));
+end;
+
+function GetFont(const AName: string): TGameFont;
+begin
+  result:=TGameFont(Fonts.get(AName));
+end;
 
 class procedure TGameFont.DoAllocate(gl: TJSWebGLRenderingContext);
 begin
@@ -233,11 +271,13 @@ var
   i, i2: Integer;
   vertices: TJSFloat32Array;
   indices: TJSUint16Array;
-  shader: TGameShader;
   texLoc, pmLoc, mmLoc: TJSWebGLUniformLocation;
   vc: GLint;
 begin
   DoAllocate(GL);
+
+  GL.enable(GL.BLEND);
+  GL.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   vertices:=TJSFloat32Array.new(4*(3+2)*length(res.Quads));
   indices:=TJSUint16Array.new(2*3*length(res.Quads));
@@ -293,7 +333,13 @@ begin
   gl.enableVertexAttribArray(vc);
 
   gl.drawElements(gl.TRIANGLES,2*3*length(res.Quads),gl.UNSIGNED_SHORT,0);
+
+  GL.disable(GL.BLEND);
 end;
+
+initialization
+  TGameFont.fBuffersAllocated:=false;
+  Fonts:=tjsmap.new;
 
 end.
 
