@@ -1,0 +1,38 @@
+{
+    "SectorSize": 100,
+    "SectorTiles": 5,
+    "GrowthTime": 10,
+
+    "Characters": {
+        "player": {
+            "hp": 100,
+            "speed": 100,
+            "damage": 10,
+            "behavior": ["player"]
+        },
+        "farmer": {
+            "hp": 20,
+            "speed": 80,
+            "damage": 5,
+            "behavior": ["farmer"]
+        },
+        "peasant": {
+            "hp": 20,
+            "speed": 80,
+            "damage": 3,
+            "behavior": []
+        },
+        "guard": {
+            "hp": 50,
+            "speed": 90,
+            "damage": 10,
+            "behavior": ["guard"]
+        },
+        "king": {
+            "hp": 150,
+            "speed": 100,
+            "damage": 25,
+            "behavior": ["king"]
+        }
+    }
+}

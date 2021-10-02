@@ -83,7 +83,10 @@ begin
                              'precision mediump float;'+
                              'varying vec2 texCoord;'+
                              'uniform sampler2D map;'+
-                             'void main(void) { gl_FragColor = texture2D(map, texCoord).rgba; }'
+                             'void main(void) {'+
+                             '  gl_FragColor = texture2D(map, texCoord).rgba;'+
+                             //'  if (gl_FragColor.a < 0.001) discard;'+
+                             '}'
                              );
 end;
 

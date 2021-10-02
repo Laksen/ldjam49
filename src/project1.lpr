@@ -8,7 +8,7 @@ uses
   JS, Classes, SysUtils, resources, utils,
   guibase, guictrls,
   gamebase, gameaudio, GameVerlets, GameMath, GameSprite,
-  ECS, GameFont, ldmap;
+  ECS, GameFont, ldmap, ldactor, ldconfig;
 
 type
   TText = class(TGameElement)
@@ -52,17 +52,23 @@ begin
   TResources.AddImage('assets/custom.png');
   TResources.AddString('assets/custom-msdf.json');
 
+  // Map tiles
   TResources.AddImage('assets/grass.png');
   TResources.AddImage('assets/field.png');
   TResources.AddString('assets/tiles.json');
 
   TResources.AddImage('assets/barley.png');
   TResources.AddString('assets/barley.json');
+
+  // Misc
+  TResources.AddString('assets/config.json');
 end;
 
 procedure TLD49Game.AfterLoad;
 begin
   inherited AfterLoad;
+
+  LoadConfig(TResources.AddString('assets/config.json').Text);
 
   AddSprite(TResources.AddString('assets/barley.json').Text);
   LoadTiles(TResources.AddString('assets/tiles.json').Text);

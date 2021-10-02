@@ -7,15 +7,9 @@ interface
 uses
   JS, webgl,
   ECS, resources,
+  ldconfig,
   GameBase, GameSprite, GameMath,
   Classes, SysUtils;
-
-const
-  SectorTiles = 3;
-
-  SectorSize = 150;
-
-  GrowthTime = 10;
 
 type
   TLDMapTileInfo = class
@@ -52,7 +46,7 @@ type
     property TileType: TLDMapTileInfo read fTileType;
   end;
 
-  TLDSectorTileArray = array[0..SectorTiles-1] of array[0..SectorTiles-1] of TLDSectorTile;
+  TLDSectorTileArray = array of array of TLDSectorTile;
 
   TLDSector = class
   private
@@ -86,7 +80,7 @@ type
     property CurrentSector: TLDSector read fCurrentSector;
   end;
 
-  TBarleyPlant = class(TGameElement)
+  TPlant = class(TGameElement)
   private
     fSize: longint;
     fLastTime,fTime,fTimeOffset: Double;
@@ -130,6 +124,8 @@ type
     procedure DeInit(AEntity: TECEntity); override;
 
     procedure Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double); override;
+  public
+    procedure SetPlantsVisible(AEntity: TECEntity; AVisible: boolean);
   end;
 
   THops = class(TField)
@@ -149,6 +145,7 @@ var
   Behaviors: TJSMap;
 
 var
+  FieldComp: TField;
   TileComp: TTileComponent;
 
 procedure LoadTiles(const AInfo: string);
@@ -196,7 +193,11 @@ begin
 end;
 
 function MakeTileQuad(X,Y: longint): TGameQuad;
+var
+  SectorSize: LongInt;
 begin
+  SectorSize:=Config.SectorSize;
+
   result[0]:=TPVector.new(X*SectorSize,     Y*SectorSize);
   result[1]:=TPVector.new((X+1)*SectorSize, Y*SectorSize);
   result[2]:=TPVector.new((X+1)*SectorSize, (Y+1)*SectorSize);
@@ -214,8 +215,8 @@ begin
 
   //writeln('r');
 
-  for i:=0 to SectorTiles-1 do
-    for i2:=0 to SectorTiles-1 do
+  for i:=0 to Config.SectorTiles-1 do
+    for i2:=0 to Config.SectorTiles-1 do
     begin
       tile:=fCurrentSector.Tiles[i,i2];
 
@@ -241,8 +242,46 @@ begin
 end;
 
 procedure TLDMap.SetCurrentSector(ASector: TLDSector);
+var
+  i, i2: Integer;
+  tile: TLDSectorTile;
+  hops: THops;
+  field: TField;
+  sectorTiles: SizeInt;
 begin
+  hops:=THops(Behaviors.get('hops'));
+  field:=TField(Behaviors.get('field'));
+
+  if fCurrentSector<>nil then
+  begin
+    sectorTiles:=length(fCurrentSector.Tiles);
+
+    // Hide stuff
+    for i:=0 to SectorTiles-1 do
+      for i2:=0 to SectorTiles-1 do
+      begin
+        tile:=fCurrentSector.Tiles[i][i2];
+
+        if EntitySystem.HasComponent(tile,hops) then
+          hops.SetPlantsVisible(tile, false);
+        if EntitySystem.HasComponent(tile,field) then
+          field.SetPlantsVisible(tile, false);
+      end;
+  end;
+
   fCurrentSector:=ASector;
+
+  // Show stuff       
+  sectorTiles:=length(fCurrentSector.Tiles);
+
+  for i:=0 to SectorTiles-1 do
+    for i2:=0 to SectorTiles-1 do
+    begin
+      tile:=fCurrentSector.Tiles[i][i2];
+
+      if EntitySystem.HasComponent(tile,hops) then hops.SetPlantsVisible(tile, true);
+      if EntitySystem.HasComponent(tile,field) then field.SetPlantsVisible(tile, true);
+    end;
 end;
 
 procedure TLDSectorTile.Update(ATimeMS: double);
@@ -267,7 +306,9 @@ end;
 procedure TLDSector.Update(ATimeMS: double);
 var
   i, i2: Integer;
+  sectorTiles: SizeInt;
 begin
+  sectorTiles:=length(fTiles);
   for i:=0 to SectorTiles-1 do
     for i2:=0 to SectorTiles-1 do
       fTiles[i][i2].Update(ATimeMS);
@@ -276,10 +317,14 @@ end;
 constructor TLDSector.Create(ASectorID: integer);
 var
   i, i2: Integer;
+  sectorTiles: LongInt;
 begin
   inherited Create;
   fID:=ASectorID;
 
+  sectorTiles:=Config.SectorTiles;
+
+  setlength(fTiles,sectorTiles,sectorTiles);
   for i:=0 to SectorTiles-1 do
     for i2:=0 to SectorTiles-1 do
       fTiles[i][i2]:=TLDSectorTile.Create(EntitySystem, TileInfo['grass'], ASectorID, i,i2);
@@ -355,12 +400,12 @@ begin
   result:='harvestable';
 end;
 
-function TBarleyPlant.GetReady: boolean;
+function TPlant.GetReady: boolean;
 begin
   result:= Size>=3;
 end;
 
-procedure TBarleyPlant.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+procedure TPlant.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 var
   frame: TGameFrame;
 begin
@@ -369,11 +414,11 @@ begin
   RenderFrame(gl, AViewport, GetGrowthRect(Position, 40,40), frame);
 end;
 
-procedure TBarleyPlant.Update(AGame: TGameBase; ATimeMS: double);
+procedure TPlant.Update(AGame: TGameBase; ATimeMS: double);
 begin
   if fSize<3 then
   begin
-    if (ATimeMS-fLastTime)>1000*GrowthTime then
+    if (ATimeMS-fLastTime)>1000*Config.GrowthTime then
     begin
       fLastTime:=ATimeMS;
       inc(fSize);
@@ -384,13 +429,13 @@ begin
   fTime:=ATimeMS / 1000;
 end;
 
-procedure TBarleyPlant.Harvest;
+procedure TPlant.Harvest;
 begin
   fTime:=fLastTime;
   fSize:=0;
 end;
 
-constructor TBarleyPlant.Create(AX, AY: double; ASprite: TGameSprite);
+constructor TPlant.Create(AX, AY: double; ASprite: TGameSprite);
 begin
   inherited Create;
   fTimeOffset:=Random;
@@ -427,11 +472,11 @@ begin
   TileComp.GetInfo(TLDSectorTile(AEntity), sec, x, y);
 
   for i:=0 to 19 do
-    plants.push(TBarleyPlant.Create(x*SectorSize+random(SectorSize), y*SectorSize+random(SectorSize), Sprite));
+    plants.push(TPlant.Create(x*Config.SectorSize+random(Config.SectorSize), y*Config.SectorSize+random(Config.SectorSize), Sprite));
 
   plants:=plants.sort(function (a,b : JSValue) : NativeInt
   begin
-    result:=round(TBarleyPlant(b).Position.y - TBarleyPlant(a).Position.y);
+    result:=round(TPlant(b).Position.y - TPlant(a).Position.y);
   end);
 
   for el in plants do
@@ -456,6 +501,17 @@ procedure TField.Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double);
 begin
   inherited Update(AEntity, ADeltaMS, ATimeMS);
   //writeln('Grow! ', GetData(AEntity).get('plants'));
+end;
+
+procedure TField.SetPlantsVisible(AEntity: TECEntity; AVisible: boolean);
+var
+  el: JSValue;
+  plants: TJSArray;
+begin
+  plants:=TJSArray(GetData(AEntity).get('plants'));
+
+  for el in plants do
+    TGameElement(el).Visible:=AVisible;
 end;
 
 initialization
