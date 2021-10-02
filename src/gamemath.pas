@@ -1,0 +1,414 @@
+unit GameMath;
+
+{$mode ObjFPC}
+{$modeswitch AdvancedRecords}
+
+interface
+
+uses
+  Classes, SysUtils,
+  Math;
+
+type
+  TPVector = record
+    X,Y,Z: double;
+    class function New(AX,AY,AZ: double): TPVector; static;
+
+    function Length: double;
+    function LengthSqr: double;
+
+    function Dot(const A: TPVector): double;
+
+    function Min(const A: TPVector): TPVector;
+    function Max(const A: TPVector): TPVector;
+
+    function Add(const A: TPVector): TPVector;
+    function Sub(const A: TPVector): TPVector;
+    function Scale(const A: double): TPVector;
+  end;
+
+  TPRect = record
+  private
+    function GetP01: TPVector;
+    function GetP10: TPVector;
+  public
+    P0, P1: TPVector;
+
+    property P01: TPVector read GetP01;
+    property P10: TPVector read GetP10;
+  end;
+
+  TPMatrixArray = array[0..15] of double;
+
+  TPMatrix = class
+  private
+    fIsIdentity,
+    fIsTranslation: boolean;
+
+    V: TPMatrixArray;
+
+    function GetTranslation: TPVector;
+  public
+    constructor Create(const AMatrix: TPMatrixArray);
+    constructor Identity;
+    constructor CreateTranslation(AX,AY,AZ: double);
+    constructor CreateRotationX(ARotation: double);
+    constructor CreateRotationY(ARotation: double);
+    constructor CreateRotationZ(ARotation: double);
+    constructor CreateScale(AX,AY,AZ: double);
+
+    constructor Ortho(const ALeft, ARight, ABottom, ATop, AZNear, AZFar: double);
+		constructor Perspective(const AFovY, AAspectRatio, AZNear, AZFar: double);
+
+    procedure Load(const AMatrix: TPMatrix);
+
+    function Multiply(const AVec: TPVector): TPVector;
+    function Multiply(const AMat: TPMatrix): TPMatrix;
+    function Transpose: TPMatrix;
+
+    procedure MultiplyInPlace(const AMatrix: TPMatrix);
+    procedure TransformInplace(var AVectors: array of TPVector);
+
+    property Translation: TPVector read GetTranslation;
+
+    property IsIdentity: boolean read fIsIdentity;
+    property IsTranslation: boolean read fIsTranslation;
+
+    property Raw: TPMatrixArray read V;
+  end;
+
+implementation
+
+function TPRect.GetP01: TPVector;
+begin
+  result.X:=P0.X;
+  result.Y:=P1.Y;
+end;
+
+function TPRect.GetP10: TPVector;
+begin
+  result.X:=P1.X;
+  result.Y:=P0.Y;
+end;
+
+function TPMatrix.GetTranslation: TPVector;
+begin
+  result:=TPVector.New(V[3], V[7], V[11]);
+end;
+
+constructor TPMatrix.Create(const AMatrix: TPMatrixArray);
+begin
+  V:=AMatrix;
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
+constructor TPMatrix.Identity;
+var
+  i: SizeInt;
+begin
+  for i:=0 to 8 do
+    V[i]:=0;
+
+  V[0]:=1;
+  V[5]:=1;
+  V[10]:=1;
+  V[15]:=1;
+
+  fIsIdentity:=true;
+  fIsTranslation:=true;
+end;
+
+constructor TPMatrix.CreateTranslation(AX, AY, AZ: double);
+begin
+  Identity;
+
+  V[3] :=AX;
+  V[7] :=AY;
+  V[11]:=AZ;
+
+  fIsIdentity:=false;
+  fIsTranslation:=true;
+end;
+
+constructor TPMatrix.CreateRotationX(ARotation: double);
+var
+  cs, ss: Double;
+begin
+  Identity;
+
+  if ARotation<>0 then
+  begin
+    cs:=cos(arotation);
+    ss:=sin(arotation);
+
+    V[5] :=cs;
+    V[6] :=ss;
+    V[9] :=-ss;
+    V[10]:=cs;
+
+    fIsIdentity:=false;
+    fIsTranslation:=false;
+  end
+end;
+
+constructor TPMatrix.CreateRotationY(ARotation: double);
+var
+  cs, ss: Double;
+begin
+  Identity;
+
+  if ARotation<>0 then
+  begin
+    cs:=cos(arotation);
+    ss:=sin(arotation);
+
+    V[0] :=cs;
+    V[2] :=-ss;
+    V[8] :=ss;
+    V[10]:=cs;
+
+    fIsIdentity:=false;
+    fIsTranslation:=false;
+  end
+end;
+
+constructor TPMatrix.CreateRotationZ(ARotation: double);
+var
+  cs, ss: Double;
+begin
+  Identity;
+
+  if ARotation<>0 then
+  begin
+    cs:=cos(arotation);
+    ss:=sin(arotation);
+
+    V[0]:=cs;
+    V[1]:=-ss;
+    V[4]:=ss;
+    V[5]:=cs;
+
+    fIsIdentity:=false;
+    fIsTranslation:=false;
+  end
+end;
+
+constructor TPMatrix.CreateScale(AX, AY, AZ: double);
+begin
+  Identity;
+
+  V[0] :=AX;
+  V[5] :=AY;
+  V[10]:=AZ;
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
+constructor TPMatrix.Ortho(const ALeft, ARight, ABottom, ATop, AZNear, AZFar: double);
+var
+	Width, Height, Depth: double;
+begin
+  Width:=ARight-ALeft;
+  Height:=ATop-ABottom;
+  Depth:=AZFar-AZNear;
+
+  Identity;
+
+  V[0] :=2.0/Width;
+  V[5] :=2.0/Height;
+  V[10]:=(-2.0)/Depth;
+
+  V[12] :=-(ARight+ALeft)/Width;
+  V[13] :=-(ATop+ABottom)/Height;
+  V[11]:=-(AZFar+AZNear)/Depth;
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
+constructor TPMatrix.Perspective(const AFovY, AAspectRatio, AZNear, AZFar: double);
+var
+  s: double;
+begin
+  Identity;
+
+  s:=AFovY * (0.5 * pi / 180);
+  s:=cos(s)/sin(s); // 1/tan(s)
+
+  V[0] :=s/AAspectRatio;
+  V[5] :=s;
+  V[10]:=-(AZFar+AZNear)/(AZFar-AZNear);
+  V[11]:=-1;
+  V[14]:=-(2*AZFar*AZNear)/(AZFar-AZNear);
+  V[15]:=0;
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
+procedure TPMatrix.Load(const AMatrix: TPMatrix);
+begin
+  v:=AMatrix.V;
+
+  fIsIdentity:=false;
+  fIsTranslation:=false;
+end;
+
+procedure TPMatrix.MultiplyInPlace(const AMatrix: TPMatrix);
+var
+  n, v2: TPMatrixArray;
+  i, i2, i3: Integer;
+  s: double;
+begin
+  v2:=AMatrix.V;
+  for i:=0 to 3 do
+    for i2:=0 to 3 do
+    begin
+      s:=0;
+      for i3:=0 to 3 do
+        s:=s+v[i*4+i3]*v2[i3*4+i2];
+
+      n[i*4+i2]:=s;
+    end;
+
+  v:=n;
+
+  fIsIdentity:=fIsIdentity and AMatrix.IsIdentity;
+  fIsTranslation:=fIsTranslation and AMatrix.IsTranslation;
+end;
+
+procedure TPMatrix.TransformInplace(var AVectors: array of TPVector);
+var
+  i: SizeInt;
+begin
+  if fIsIdentity then
+    exit;
+
+  if fIsTranslation then
+    for i:=low(AVectors) to high(AVectors) do
+    begin
+      AVectors[i].X:=AVectors[i].X+V[3];
+      AVectors[i].Y:=AVectors[i].Y+V[7];
+      AVectors[i].Z:=AVectors[i].Z+V[11];
+    end
+  else
+    for i:=low(AVectors) to high(AVectors) do
+    begin
+      AVectors[i].X:=AVectors[i].X*V[0]+AVectors[i].Y*V[1]+AVectors[i].Z*V[2]+V[3];
+      AVectors[i].Y:=AVectors[i].X*V[4]+AVectors[i].Y*V[5]+AVectors[i].Z*V[6]+V[7];
+      AVectors[i].Z:=AVectors[i].X*V[8]+AVectors[i].Y*V[9]+AVectors[i].Z*V[10]+V[11];
+    end;
+end;
+
+function TPMatrix.Multiply(const AVec: TPVector): TPVector;
+begin
+  if fIsIdentity then
+    exit(AVec);
+
+  if fIsTranslation then
+  begin
+    Result.X:=AVec.X+V[3];
+    Result.Y:=AVec.Y+V[7];
+    Result.Z:=AVec.Z+V[11];
+  end
+  else
+  begin
+    Result.X:=AVec.X*V[0]+AVec.Y*V[1]+AVec.Z*V[2]+V[3];
+    Result.Y:=AVec.X*V[4]+AVec.Y*V[5]+AVec.Z*V[6]+V[7];
+    Result.Z:=AVec.X*V[8]+AVec.Y*V[9]+AVec.Z*V[10]+V[11]
+  end;
+end;
+
+function TPMatrix.Multiply(const AMat: TPMatrix): TPMatrix;
+var
+  n, v2: TPMatrixArray;
+  i, i2, i3: Integer;
+  s: double;
+begin
+  v2:=AMat.V;
+  for i:=0 to 3 do
+    for i2:=0 to 3 do
+    begin
+      s:=0;
+      for i3:=0 to 3 do
+        s:=s+v[i*4+i3]*v2[i3*4+i2];
+
+      n[i*4+i2]:=s;
+    end;
+
+  result:=TPMatrix.Create(n);
+end;
+
+function TPMatrix.Transpose: TPMatrix;
+begin
+  result:=TPMatrix.Create([V[0], V[4], V[8],  V[12],
+                           V[1], V[5], V[9],  V[13],
+                           V[2], V[6], V[10], V[14],
+                           V[3], V[7], V[11], V[15]]);
+end;
+
+
+class function TPVector.New(AX, AY, AZ: double): TPVector;
+begin
+  result.X:=AX;
+  result.Y:=AY;
+  result.Z:=AZ;
+end;
+
+function TPVector.Length: double;
+begin
+  result:=sqr(X)+sqr(Y)+sqr(Z);
+  if result>0 then
+    result:=sqrt(result);
+end;
+
+function TPVector.LengthSqr: double;
+begin
+  result:=sqr(X)+sqr(Y)+sqr(Z);
+end;
+
+function TPVector.Dot(const A: TPVector): double;
+begin
+  result:=X*A.X+Y*A.Y+Z*A.Z;
+end;
+
+function TPVector.Min(const A: TPVector): TPVector;
+begin
+  result.X:=Math.Min(X, A.X);
+  result.Y:=Math.Min(Y, A.Y);
+  result.Z:=Math.Min(Z, A.Z);
+end;
+
+function TPVector.Max(const A: TPVector): TPVector;
+begin
+  result.X:=Math.Max(X, A.X);
+  result.Y:=Math.Max(Y, A.Y);
+  result.Z:=Math.Max(Z, A.Z);
+end;
+
+function TPVector.Add(const A: TPVector): TPVector;
+begin
+  result.X:=X+A.X;
+  result.Y:=Y+A.Y;
+  result.Z:=Z+A.Z;
+end;
+
+function TPVector.Sub(const A: TPVector): TPVector;
+begin
+  result.X:=X-A.X;
+  result.Y:=Y-A.Y;
+  result.Z:=Z-A.Z;
+end;
+
+function TPVector.Scale(const A: double): TPVector;
+begin
+  result.X:=X*A;
+  result.Y:=Y*A;
+  result.Z:=Z*A;
+end;
+
+end.
+
