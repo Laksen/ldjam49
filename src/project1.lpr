@@ -13,7 +13,7 @@ uses
 type
   TText = class(TGameElement)
   protected   
-  r: Double;
+    r: Double;
     procedure Update(AGame: TGameBase; ATimeMS: double); override;
     procedure Render(gl: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   end;
@@ -57,8 +57,8 @@ end;
 procedure TMyGame.InitializeResources;
 begin
   inherited InitializeResources;
-  x:=TResources.AddImage('stuff/custom.png');
-  s:=TResources.AddString('stuff/custom-msdf.json');
+  x:=TResources.AddImage('../stuff/custom.png');
+  s:=TResources.AddString('../stuff/custom-msdf.json');
 end;
 
 procedure TMyGame.AfterLoad;
