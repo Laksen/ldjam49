@@ -30,6 +30,10 @@ type
   end;
 
   TGameFont = class
+  private class var
+    fBuffersAllocated: boolean;
+    fBuffer, fIndices: TJSWebGLBuffer;
+    class procedure DoAllocate(gl: TJSWebGLRenderingContext);
   private
     fInfo: TJSObject;
     fPadding: TJSArray;
@@ -57,6 +61,16 @@ implementation
 const
   VertShader = 'attribute vec2 uv; attribute vec3 position; uniform mat4 projectionMatrix; uniform mat4 modelViewMatrix; varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
   FragShader = '#ifdef GL_OES_standard_derivatives'#13#10'#extension GL_OES_standard_derivatives : enable'#13#10'#endif'#13#10'precision highp float; uniform float opacity; uniform vec3 color; uniform sampler2D map; varying vec2 vUv; float median(float r, float g, float b) { return max(min(r, g), min(max(r, g), b)); } void main() { vec3 sample = texture2D(map, vUv).rgb; float sigDist = median(sample.r, sample.g, sample.b) - 0.5; float alpha = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0); gl_FragColor = vec4(color.xyz, alpha * opacity); if (gl_FragColor.a < 0.0001) discard; }';
+
+class procedure TGameFont.DoAllocate(gl: TJSWebGLRenderingContext);
+begin
+  if not fBuffersAllocated then
+  begin
+    fBuffersAllocated:=true;
+    fBuffer:=gl.createBuffer;
+    fIndices:=gl.createBuffer;
+  end;
+end;
 
 function TGameFont.FindChar(c: char): TJSObject;
 var
@@ -219,11 +233,12 @@ var
   i, i2: Integer;
   vertices: TJSFloat32Array;
   indices: TJSUint16Array;
-  buf, idx: TJSWebGLBuffer;
   shader: TGameShader;
   texLoc, pmLoc, mmLoc: TJSWebGLUniformLocation;
   vc: GLint;
 begin
+  DoAllocate(GL);
+
   vertices:=TJSFloat32Array.new(4*(3+2)*length(res.Quads));
   indices:=TJSUint16Array.new(2*3*length(res.Quads));
 
@@ -242,20 +257,18 @@ begin
     indices._set([4*i+0,4*i+1,4*i+2, 4*i+2,4*i+3,4*i+0], 2*3*i);
   end;
 
-  buf:=gl.createBuffer;
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, nil);
 
-  idx:=gl.createBuffer;
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fIndices);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, nil);
 
   gl.useProgram(MSDFShader.ID);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx);
+  gl.bindBuffer(gl.ARRAY_BUFFER, fBuffer);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fIndices);
 
   texLoc:=gl.getUniformLocation(MSDFShader.ID, 'map');
 
@@ -280,9 +293,6 @@ begin
   gl.enableVertexAttribArray(vc);
 
   gl.drawElements(gl.TRIANGLES,2*3*length(res.Quads),gl.UNSIGNED_SHORT,0);
-
-  gl.deleteBuffer(idx);
-  gl.deleteBuffer(buf);
 end;
 
 end.

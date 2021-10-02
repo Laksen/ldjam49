@@ -57,8 +57,8 @@ end;
 procedure TMyGame.InitializeResources;
 begin
   inherited InitializeResources;
-  x:=TResources.AddImage('../stuff/custom.png');
-  s:=TResources.AddString('../stuff/custom-msdf.json');
+  x:=TResources.AddImage('../assets/custom.png');
+  s:=TResources.AddString('../assets/custom-msdf.json');
 end;
 
 procedure TMyGame.AfterLoad;
