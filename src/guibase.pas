@@ -29,6 +29,7 @@ type
     fOnMouseEnter: TGUICallback;
     fOnMouseLeave: TGUICallback;
     fParent: TGUIElement;
+    fTag: longint;
     fTop: longint;
     fVisible: boolean;
     fWidth: longint;
@@ -71,6 +72,7 @@ type
     property Height: longint read fHeight write fHeight;
 
     property Parent: TGUIElement read fParent write fParent;
+    property Tag: longint read fTag write fTag;
 
     property OnClick: TGUICallback read fOnClick write fOnClick;
     property OnMouseEnter: TGUICallback read fOnMouseEnter write fOnMouseEnter;

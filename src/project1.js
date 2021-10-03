@@ -3179,7 +3179,7 @@ rtl.module("GameBase",["System","JS","Web","webgl","gameaudio","GameMath","SysUt
       } else {
         gl.texParameteri(3553,10242,33071);
         gl.texParameteri(3553,10243,33071);
-        gl.texParameteri(3553,10241,9729);
+        gl.texParameteri(3553,10241,9728);
       };
     };
     this.Destroy = function () {
@@ -3645,6 +3645,7 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
       this.fHitTestVisible = false;
       this.fOnClick = null;
       this.fParent = null;
+      this.fTag = 0;
       this.fVisible$1 = false;
       this.fWidth = 0;
       this.fChildren = null;
@@ -5310,9 +5311,11 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
     };
   });
   this.TLDGameState = {"0": "gsIntro", gsIntro: 0, "1": "gsMain", gsMain: 1, "2": "gsDialog", gsDialog: 2};
+  this.TAction = {"0": "aMove", aMove: 0, "1": "aAttack", aAttack: 1, "2": "aTalk", aTalk: 2, "3": "aUse", aUse: 3};
   rtl.createClass(this,"TLD49Game",pas.GameBase.TGameBase,function () {
     this.$init = function () {
       pas.GameBase.TGameBase.$init.call(this);
+      this.fCurrentAction = 0;
       this.StartSector = null;
       this.State = 0;
       this.IntroElements = null;
@@ -5321,6 +5324,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvPanel = null;
       this.InvGoldLabel = null;
       this.Inventory = null;
+      this.Actions = rtl.arraySetLength(null,null,4);
     };
     this.$final = function () {
       this.StartSector = undefined;
@@ -5330,7 +5334,17 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvPanel = undefined;
       this.InvGoldLabel = undefined;
       this.Inventory = undefined;
+      this.Actions = undefined;
       pas.GameBase.TGameBase.$final.call(this);
+    };
+    this.SetAction = function (ATarget, APosition) {
+      this.SetCurrentAction(ATarget.fTag);
+    };
+    this.SetCurrentAction = function (AValue) {
+      if (this.fCurrentAction === AValue) return;
+      this.Actions[this.fCurrentAction].fColor.$assign(pas.GameBase.TGameColor.New(1,1,1,1.0));
+      this.fCurrentAction = AValue;
+      this.Actions[AValue].fColor.$assign(pas.GameBase.TGameColor.New(1,1,0,1.0));
     };
     this.ScreenToWorld = function (APoint) {
       var Result = pas.GameMath.TPVector.$new();
@@ -5401,14 +5415,31 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       };
     };
     this.MakeGUI = function () {
+      var $Self = this;
       var t = null;
+      var ActionPanel = null;
+      var PanelBG = pas.GameBase.TGameColor.$new();
+      function AddAction(AAction, ACaption, AX, AY) {
+        var btn = null;
+        btn = pas.guictrls.TGUILabel.$create("Create$3");
+        btn.SetCaption(ACaption);
+        btn.SetSize(AX,AY,175,50);
+        btn.SetFontSize(50);
+        btn.fColor.$assign(pas.GameBase.TGameColor.New(1,1,1,1.0));
+        ActionPanel.AddChild(btn);
+        $Self.Actions[AAction] = btn;
+        btn.fTag = AAction;
+        btn.fOnClick = rtl.createCallback($Self,"SetAction");
+      };
+      PanelBG.$assign(pas.GameBase.TGameColor.New(0.4,0.4,0.4,1.0));
+      this.MainGUI.fPosition.$assign(pas.GameMath.TPVector.New(0,0,1));
       this.MainGuiPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       this.MainGuiPanel.SetSize(0,this.fHeight - 200,this.fWidth,200);
       this.MainGuiPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(1,0,0,1.0));
       this.MainGUI.AddChild(this.MainGuiPanel);
       this.InvPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       this.InvPanel.SetSize(0,2,350,200 - 2);
-      this.InvPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(0.4,0.4,0.4,1.0));
+      this.InvPanel.fBackGround.$assign(PanelBG);
       this.MainGuiPanel.AddChild(this.InvPanel);
       t = pas.guictrls.TGUILabel.$create("Create$3");
       t.SetCaption("Inventory");
@@ -5421,13 +5452,22 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvGoldLabel.SetFontSize(30);
       this.InvPanel.AddChild(this.InvGoldLabel);
       this.Inventory = pas.guictrls.TGUIInventory.$create("Create$3");
-      this.Inventory.fItemWidth = rtl.trunc(350 / 2);
+      this.Inventory.fItemWidth = rtl.trunc(350 / 3);
       this.Inventory.SetSize(0,60,350,200 - 60);
       this.InvPanel.AddChild(this.Inventory);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage0",10);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage1",10);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage2",10);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage3",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-hops"),"idle",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-barley"),"idle",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-scythe"),"idle",1);
+      ActionPanel = pas.guictrls.TGUIPanel.$create("Create$3");
+      ActionPanel.SetSize(352,2,350,200 - 2);
+      ActionPanel.fBackGround.$assign(PanelBG);
+      this.MainGuiPanel.AddChild(ActionPanel);
+      AddAction(0,"Move",0,0);
+      AddAction(1,"Attack",175,0);
+      AddAction(2,"Talk",0,50);
+      AddAction(3,"Use",175,50);
+      this.SetCurrentAction(1);
+      this.SetCurrentAction(0);
     };
     this.Update = function (ATimeMS) {
       pas.GameBase.TGameBase.Update.call(this,ATimeMS);
@@ -5475,9 +5515,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/king.png");
       pas.resources.TResources.AddImage("assets\/guard.png");
       pas.resources.TResources.AddImage("assets\/player.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconHops.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBarley.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconScythe.png");
       pas.resources.TResources.AddImage("assets\/bld.png");
       pas.resources.TResources.AddImage("assets\/misc.png");
       pas.resources.TResources.AddString("assets\/tiles.json");
+      pas.resources.TResources.AddString("assets\/sprites-icons.json");
       pas.resources.TResources.AddString("assets\/sprites-plants.json");
       pas.resources.TResources.AddString("assets\/sprites-characters.json");
       pas.resources.TResources.AddString("assets\/sprites-buildings.json");
@@ -5489,6 +5533,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       var i = 0;
       pas.GameBase.TGameBase.AfterLoad.call(this);
       pas.ldconfig.LoadConfig(pas.resources.TResources.AddString("assets\/config.json").fString);
+      pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-icons.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-plants.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-characters.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-buildings.json").fString);

@@ -24,12 +24,17 @@ type
     gsDialog
   );
 
+  TAction = (aMove, aAttack, aTalk, aUse);
+
   TLD49Game = class(TGameBase)
   private
+    fCurrentAction: TAction;
     StartSector: TLDSector;
     State: TLDGameState;
 
     IntroElements: TJSArray;
+    procedure SetAction(ATarget: TGUIElement; const APosition: TGUIPoint);
+    procedure SetCurrentAction(const AValue: TAction);
 
   private
     // Main GUI
@@ -39,6 +44,9 @@ type
     InvPanel: TGUIPanel;
     InvGoldLabel: TGUILabel;
     Inventory: TGUIInventory;
+
+    Actions: array[TAction] of TGUILabel;
+    property CurrentAction: TAction read fCurrentAction write SetCurrentAction;
   private
 
     function ScreenToWorld(const APoint: TPVector): TPVector;
@@ -79,6 +87,19 @@ begin
   v.ModelView:=TPMatrix.Identity.Multiply(TPMatrix.CreateTranslation(-res.width/2,-res.Height/2,0));
 
   TGameFont.Render(gl, res, v, TGameColor.New(1,1,1));
+end;
+
+procedure TLD49Game.SetCurrentAction(const AValue: TAction);
+begin
+  if fCurrentAction=AValue then Exit;                  
+  Actions[fCurrentAction].Color:=TGameColor.new(1,1,1);
+  fCurrentAction:=AValue;
+  Actions[AValue].Color:=TGameColor.new(1,1,0);
+end;
+
+procedure TLD49Game.SetAction(ATarget: TGUIElement; const APosition: TGUIPoint);
+begin
+  CurrentAction:=TAction(ATarget.Tag);
 end;
 
 function TLD49Game.ScreenToWorld(const APoint: TPVector): TPVector;
@@ -173,7 +194,30 @@ const
 procedure TLD49Game.MakeGUI;
 var
   t: TGUILabel;
+  ActionPanel: TGUIPanel;
+  PanelBG: TGameColor;
+
+  procedure AddAction(AAction: TAction; const ACaption: string; AX,AY: longint);
+  var
+    btn: TGUILabel;
+  begin
+    btn:=TGUILabel.Create;
+    btn.Caption:=ACaption;
+    btn.SetSize(ax,ay,175,50);
+    btn.Size:=50;
+    btn.Color:=TGameColor.new(1,1,1);
+    ActionPanel.AddChild(btn);
+    Actions[AAction]:=btn;
+
+    btn.Tag:=integer(AAction);
+    btn.OnClick:=@SetAction;
+  end;
+
 begin
+  PanelBG:=TGameColor.new(0.4,0.4,0.4);;
+
+  MainGUI.Position:=TPVector.New(0,0,1);
+
   MainGuiPanel:=TGUIPanel.Create;
   MainGuiPanel.SetSize(0,Height-GUIHeight,Width,GUIHeight);
   MainGuiPanel.BackGround:=TGameColor.New(1,0,0);
@@ -181,7 +225,7 @@ begin
 
     InvPanel:=TGUIPanel.Create;
     InvPanel.SetSize(0,2,350,GUIHeight-2);
-    InvPanel.BackGround:=TGameColor.new(0.4,0.4,0.4);
+    InvPanel.BackGround:=PanelBG;
     MainGuiPanel.AddChild(InvPanel);
 
       t:=TGUILabel.Create;
@@ -197,14 +241,26 @@ begin
       InvPanel.AddChild(InvGoldLabel);
 
       Inventory:=TGUIInventory.Create;
-      Inventory.ItemWidth:=350 div 2;
+      Inventory.ItemWidth:=350 div 3;
       Inventory.SetSize(0,60,350,GUIHeight-60);
       InvPanel.AddChild(Inventory);
 
-      Inventory.AddElements(GetSprite('barley'), 'stage0', 10);
-      Inventory.AddElements(GetSprite('barley'), 'stage1', 10);
-      Inventory.AddElements(GetSprite('barley'), 'stage2', 10);
-      Inventory.AddElements(GetSprite('barley'), 'stage3', 10);
+      Inventory.AddElements(GetSprite('icon-hops'), 'idle', 10);
+      Inventory.AddElements(GetSprite('icon-barley'), 'idle', 10);
+      Inventory.AddElements(GetSprite('icon-scythe'), 'idle', 1);
+
+    ActionPanel:=TGUIPanel.Create;
+    ActionPanel.SetSize(352,2,350, GUIHeight-2);
+    ActionPanel.BackGround:=PanelBG;
+    MainGuiPanel.AddChild(ActionPanel);
+
+      AddAction(aMove,   'Move',   0,  0);
+      AddAction(aAttack, 'Attack', 175,0);
+      AddAction(aTalk,   'Talk',   0,  50);
+      AddAction(aUse,    'Use',    175,50);
+
+      SetCurrentAction(aAttack);
+      SetCurrentAction(aMove);
 end;
 
 procedure TLD49Game.Update(ATimeMS: double);
@@ -265,12 +321,17 @@ begin
   TResources.AddImage('assets/guard.png');
   TResources.AddImage('assets/player.png');
 
+  TResources.AddImage('assets/Icons/IconHops.png');
+  TResources.AddImage('assets/Icons/IconBarley.png');
+  TResources.AddImage('assets/Icons/IconScythe.png');
+
   TResources.AddImage('assets/bld.png');
 
   TResources.AddImage('assets/misc.png');
                                              
   TResources.AddString('assets/tiles.json');
 
+  TResources.AddString('assets/sprites-icons.json');
   TResources.AddString('assets/sprites-plants.json');
   TResources.AddString('assets/sprites-characters.json');
   TResources.AddString('assets/sprites-buildings.json');
@@ -290,6 +351,7 @@ begin
 
   LoadConfig(TResources.AddString('assets/config.json').Text);
 
+  AddSprites(TResources.AddString('assets/sprites-icons.json').Text);
   AddSprites(TResources.AddString('assets/sprites-plants.json').Text);
   AddSprites(TResources.AddString('assets/sprites-characters.json').Text);
   AddSprites(TResources.AddString('assets/sprites-buildings.json').Text);

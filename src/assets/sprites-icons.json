@@ -1,0 +1,29 @@
+[
+    {
+        "name": "icon-hops",
+        "texture": "assets/Icons/IconHops.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-barley",
+        "texture": "assets/Icons/IconBarley.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-scythe",
+        "texture": "assets/Icons/IconScythe.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    }
+]
