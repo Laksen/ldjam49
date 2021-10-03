@@ -50,7 +50,7 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    procedure SetSize(AX,AY,AWidth,AHeight: longint);
+    procedure SetSize(AX,AY,AWidth,AHeight: longint); virtual;
 
     procedure DoClick(ACoord: TGUIPoint; var AHandled: boolean); virtual;
     procedure DoMove(ACoord: TGUIPoint; var AHit: boolean; var AControl: TGUIElement); virtual;

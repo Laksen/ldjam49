@@ -1,0 +1,22 @@
+[
+    {
+        "name": "sector_button",
+        "texture": "assets/misc.png",
+        "tile-width": 256,
+        "tile-height": 64,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 0.25 }
+            ],
+            "hover": [
+                { "frame": 1, "time": 0.25 }
+            ],
+            "click": [
+                { "frame": 2, "time": 0.25 }
+            ],
+            "locked": [
+                { "frame": 3, "time": 0.25 }
+            ]
+        }
+    }
+]

@@ -37,8 +37,8 @@ type
     MainGuiPanel: TGUIPanel;
 
     InvPanel: TGUIPanel;
-
-
+    InvGoldLabel: TGUILabel;
+    Inventory: TGUIInventory;
   private
 
     function ScreenToWorld(const APoint: TPVector): TPVector;
@@ -48,6 +48,7 @@ type
 
     procedure MakeGUI;
   protected
+    procedure Update(ATimeMS: double); override;
     function GetElements: TJSArray; override;
   public
     procedure DoClick(AX, AY: double; AButtons: longword); override;
@@ -150,7 +151,6 @@ begin
 
         for spawn in tjsarray(iff(o2['spawn'], tjsarray.new())) do
         begin
-          //writeln(spawn);
           ch:=SpawnCharacter(GetName, string(spawn), sec.ID, x*Config.SectorSize,y*Config.SectorSize);
 
           case string(spawn) of
@@ -180,15 +180,37 @@ begin
   MainGUI.AddChild(MainGuiPanel);
 
     InvPanel:=TGUIPanel.Create;
-    InvPanel.SetSize(0,0,300,GUIHeight);
-    InvPanel.BackGround:=TGameColor.new(0,1,0);
+    InvPanel.SetSize(0,2,350,GUIHeight-2);
+    InvPanel.BackGround:=TGameColor.new(0.4,0.4,0.4);
     MainGuiPanel.AddChild(InvPanel);
 
       t:=TGUILabel.Create;
       t.Caption:='Inventory';
-      t.SetSize(0,0,350,0);
+      t.SetSize(0,0,350,30);
       t.Size:=30;
       InvPanel.AddChild(t);
+
+      InvGoldLabel:=TGUILabel.Create;
+      InvGoldLabel.Caption:='Gold: 0';
+      InvGoldLabel.SetSize(0,30,350,30);
+      InvGoldLabel.Size:=30;
+      InvPanel.AddChild(InvGoldLabel);
+
+      Inventory:=TGUIInventory.Create;
+      Inventory.ItemWidth:=350 div 2;
+      Inventory.SetSize(0,60,350,GUIHeight-60);
+      InvPanel.AddChild(Inventory);
+
+      Inventory.AddElements(GetSprite('barley'), 'stage0', 10);
+      Inventory.AddElements(GetSprite('barley'), 'stage1', 10);
+      Inventory.AddElements(GetSprite('barley'), 'stage2', 10);
+      Inventory.AddElements(GetSprite('barley'), 'stage3', 10);
+end;
+
+procedure TLD49Game.Update(ATimeMS: double);
+begin
+  inherited Update(ATimeMS);
+  InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);;
 end;
 
 function TLD49Game.GetElements: TJSArray;
@@ -244,12 +266,15 @@ begin
   TResources.AddImage('assets/player.png');
 
   TResources.AddImage('assets/bld.png');
+
+  TResources.AddImage('assets/misc.png');
                                              
   TResources.AddString('assets/tiles.json');
 
   TResources.AddString('assets/sprites-plants.json');
   TResources.AddString('assets/sprites-characters.json');
   TResources.AddString('assets/sprites-buildings.json');
+  TResources.AddString('assets/sprites-misc.json');
 
   // Misc
   TResources.AddString('assets/config.json');
@@ -258,6 +283,8 @@ begin
 end;
 
 procedure TLD49Game.AfterLoad;
+var
+  i: Integer;
 begin
   inherited AfterLoad;
 
@@ -266,6 +293,7 @@ begin
   AddSprites(TResources.AddString('assets/sprites-plants.json').Text);
   AddSprites(TResources.AddString('assets/sprites-characters.json').Text);
   AddSprites(TResources.AddString('assets/sprites-buildings.json').Text);
+  AddSprites(TResources.AddString('assets/sprites-misc.json').Text);
 
   LoadTiles(TResources.AddString('assets/tiles.json').Text);
   LoadFont('sans', TResources.AddString('assets/custom-msdf.json').Text, TResources.AddImage('assets/custom.png'));
@@ -279,6 +307,9 @@ begin
 
   MakeGUI;
 
+  for i:=0 to 3 do
+    SectorArrows[i]:=TLDSectorButton(AddElement(TLDSectorButton.Create(i)));
+
   LoadMap(TResources.AddString('assets/map.json').Text);
   Map.SetCurrentSector(StartSector);
 end;
@@ -288,7 +319,8 @@ begin
   inherited AfterResize;
 
   Viewport.Projection:=TPMatrix.Ortho(Width/4, -Width/4, Height/4, -Height/4, -10000, 10000);
-  Viewport.ModelView:=TPMatrix.LookAt(TPVector.New(450/2-20,450/2-60,0),
+  Viewport.ModelView:=TPMatrix.LookAt(//TPVector.New(450/2-20,450/2-60,0),
+                                      TPVector.New(450/2,450/2,0),
                                       TPVector.New(300,-300,500),
                                       TPVector.New(0,0,-1));
 

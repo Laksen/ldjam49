@@ -12,6 +12,20 @@ uses
   Classes, SysUtils;
 
 type
+  TLDSectorButton = class(TGameElement)
+  private
+    fAvail: boolean;
+    fQuad: TGameQuad;
+    fSprite: TGameSprite;
+    fDirection: LongInt;
+  protected
+    procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+  public
+    constructor Create(ADirection: longint);
+
+    property Avail: boolean read fAvail write fAvail;
+  end;
+
   TLDMapTileInfo = class
   private
     fAnimation: string;
@@ -56,14 +70,18 @@ type
   private
     fID: integer;
     fTiles: TLDSectorTileArray;
+    fX: longint;
+    fY: longint;
   protected
     procedure Update(ATimeMS: double);
   public
-    constructor Create();
+    constructor Create(AX,AY: longint);
 
     procedure SetTile(AX,AY: longint; ATileType: TLDMapTileInfo);
     procedure SetTile(AX, AY: longint; const AName: string);
 
+    property X: longint read fX;
+    property Y: longint read fY;
     property ID: integer read fID;
     property Tiles: TLDSectorTileArray read fTiles;
   end;
@@ -79,6 +97,7 @@ type
     constructor Create;
 
     function GetSector(AX, AY: longint): TLDSector;
+    function HasSector(AX, AY: longint): boolean;
     procedure SetCurrentSector(ASector: TLDSector);
 
     property CurrentSector: TLDSector read fCurrentSector;
@@ -141,8 +160,11 @@ type
 
 var
   Map: TLDMap;
+  SectorArrows: array[0..3] of TLDSectorButton;
 
 procedure LoadTiles(const AInfo: string);
+
+procedure UpdateNeighbourSectors;
 
 implementation
 
@@ -162,6 +184,63 @@ var
 procedure LoadTiles(const AInfo: string);
 begin
   TileInfo:=TLDMapTiles.Create(AInfo);
+end;
+
+procedure UpdateNeighbourSectors;
+var
+  x, y: LongInt;
+begin
+  x:=Map.CurrentSector.X;
+  y:=Map.CurrentSector.y;
+
+  SectorArrows[0].Avail:=map.HasSector(x,  y-1);
+  SectorArrows[1].Avail:=map.HasSector(x+1,y);
+  SectorArrows[2].Avail:=map.HasSector(x,  y+1);
+  SectorArrows[3].Avail:=map.HasSector(x-1,y);
+end;
+
+procedure TLDSectorButton.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+var
+  fAnim: String;
+begin
+  inherited Render(GL, AViewport);
+  fAnim:='idle';
+  if not fAvail then
+    fAnim:='locked';
+
+  RenderFrame(gl,AViewport,fQuad,fSprite.GetFrame(fAnim,0));
+end;
+
+function MakeSecButtonQuad(Width, Height: double): TGameQuad;
+var
+  SectorSize: LongInt;
+begin
+  SectorSize:=Config.SectorSize;
+
+  result[3]:=TPVector.new(1.5*SectorSize+Width/2, -20-0*Height);
+  result[0]:=TPVector.new(1.5*SectorSize+Width/2, -20-1*Height);
+  result[1]:=TPVector.new(1.5*SectorSize-Width/2, -20-1*Height);
+  result[2]:=TPVector.new(1.5*SectorSize-Width/2, -20-0*Height);
+
+  //result[0]:=TPVector.new(1.5*Config.SectorSize, 1.5*Config.SectorSize-20);
+end;
+
+constructor TLDSectorButton.Create(ADirection: longint);
+var
+  tx, t2: TPMatrix;
+begin
+  inherited Create(true);
+  fAvail:=true;
+  fDirection:=ADirection;
+  fSprite:=GetSprite('sector_button');
+  fQuad:=MakeSecButtonQuad(2*Config.SectorSize, 2/4*Config.SectorSize);
+
+  tx:=TPMatrix.CreateTranslation(-1.5*Config.SectorSize,-1.5*Config.SectorSize,0).Transpose;
+
+  tx.TransformInplace(fQuad);
+  t2:=TPMatrix.CreateRotationZ(-adirection*pi/2).transpose;
+  t2.TransformInplace(fQuad);
+  tx.Inverse.TransformInplace(fquad);
 end;
 
 function TTileComponent.GetName: string;
@@ -242,9 +321,17 @@ var
 begin
   key:=inttostr(ax)+'x'+inttostr(ay);
   if not fSectors.has(key) then
-    fSectors.&set(key, TLDSector.Create());
+    fSectors.&set(key, TLDSector.Create(ax,ay));
 
   result:=TLDSector(fSectors.get(key));
+end;
+
+function TLDMap.HasSector(AX, AY: longint): boolean;
+var
+  key: string;
+begin
+  key:=inttostr(ax)+'x'+inttostr(ay);
+  result:=fSectors.has(key)
 end;
 
 procedure TLDMap.SetCurrentSector(ASector: TLDSector);
@@ -288,6 +375,8 @@ begin
     end;
 
   ShowCharacters(fCurrentSector.ID);
+
+  UpdateNeighbourSectors;
 end;
 
 procedure TLDSectorTile.Update(ATimeMS: double);
@@ -320,12 +409,14 @@ begin
       fTiles[i][i2].Update(ATimeMS);
 end;
 
-constructor TLDSector.Create();
+constructor TLDSector.Create(AX, AY: longint);
 var
   i, i2: Integer;
   sectorTiles: LongInt;
 begin
   inherited Create;
+  fX:=ax;
+  fy:=ay;
   fID:=Sectors;
   inc(Sectors);
 

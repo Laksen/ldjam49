@@ -7,7 +7,7 @@ interface
 uses
   GameBase, GameSprite, GameMath, GameFont,
   guibase,
-  web, webgl;
+  web, webgl, js;
 
 type
   TGUIImage = class(TGUIElement)
@@ -67,9 +67,40 @@ type
     property HAlign: TGUILabelHAlign read fHAlign write fHAlign;
   end;
 
+  TGUIInventoryItem = class(TGUIElement)
+  private
+    fItem: TGameSprite;
+    fItems: Integer;
+    fAnimation: String;
+              
+    fLabel: TGUILabel;
+    procedure SetItems(const AValue: integer);
+  protected
+    procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+  public
+    procedure SetSize(AX, AY, AWidth, AHeight: longint); override;
+
+    constructor Create(AItem: TGameSprite; AAnimation: string);
+
+    property Item: TGameSprite read fItem;
+    property Count: integer read fItems write SetItems;
+    property Animation: string read fAnimation;
+  end;
+
   TGUIInventory = class(TGUIElement)
   private
+    fItemHeight: integer;
+    fItems: TJSArray;
+    fItemWidth: integer;
+    procedure RepackItems;
   public
+    constructor Create;
+
+    procedure AddElements(AItem: TGameSprite; AAnimation: string; ACount: longint);
+    function RemoveElements(AItem: TGameSprite; AAnimation: string; ACount: longint): boolean;
+
+    property ItemHeight: integer read fItemHeight write fItemHeight;
+    property ItemWidth: integer read fItemWidth write fItemWidth;
   end;
 
 implementation
@@ -83,6 +114,124 @@ begin
   result[1]:=APosition.Add(TPVector.new(AWidth, 0));
   result[2]:=APosition.Add(TPVector.new(AWidth, AHeight));
   result[3]:=APosition.Add(TPVector.new(0,      AHeight));
+end;
+
+procedure TGUIInventoryItem.SetItems(const AValue: integer);
+begin
+  if fItems=AValue then Exit;
+  fItems:=AValue;
+
+  flabel.Caption:=inttostr(AValue);
+end;
+
+procedure TGUIInventoryItem.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+begin
+  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Height,Height), fItem.GetFrame(fAnimation, 0));
+  inherited Render(acontext, AViewport);
+end;
+
+procedure TGUIInventoryItem.SetSize(AX, AY, AWidth, AHeight: longint);
+begin
+  inherited SetSize(AX, AY, AWidth, AHeight);
+  fLabel.Size:=Height;;
+  fLabel.SetSize(Height,0,10000,Height);
+end;
+
+constructor TGUIInventoryItem.Create(AItem: TGameSprite; AAnimation: string);
+begin
+  inherited Create;
+  fItem:=AItem;
+  fItems:=0;
+  fAnimation:=AAnimation;
+
+  fLabel:=TGUILabel.Create;
+  AddChild(fLabel);
+  fLabel.SetSize(Height,0,10000,Height);
+  fLabel.Caption:='0';
+end;
+
+procedure TGUIInventory.RepackItems;
+var
+  x,y: longint;
+  el: JSValue;
+  e: TGUIInventoryItem;
+begin
+  x:=0;
+  y:=0;
+
+  for el in fItems do
+  begin
+    e:=TGUIInventoryItem(el);
+
+    e.SetSize(x,y,fItemWidth,fItemHeight);
+    x:=x+fItemWidth;
+    if (x+fItemWidth-1)>=Width then
+    begin
+      inc(y, fItemHeight);
+      x:=0;
+    end;
+  end;
+end;
+
+constructor TGUIInventory.Create;
+begin
+  inherited Create;
+  fItems:=TJSArray.new;
+  fItemHeight:=35;
+  fItemWidth:=70;
+end;
+
+procedure TGUIInventory.AddElements(AItem: TGameSprite; AAnimation: string; ACount: longint);
+var
+  el: JSValue;
+  e: TGUIInventoryItem;
+begin
+  for el in fItems do
+  begin
+    e:=TGUIInventoryItem(el);
+
+    if (e.Item=AItem) and (e.Animation=AAnimation) then
+    begin
+      e.Count:=e.Count + acount;
+      exit;
+    end;
+  end;
+
+  e:=TGUIInventoryItem.Create(AItem,AAnimation);
+  e.Count:=ACount;
+  fItems.push(e);
+
+  AddChild(e);
+
+  RepackItems;
+end;
+
+function TGUIInventory.RemoveElements(AItem: TGameSprite; AAnimation: string; ACount: longint): boolean;
+var
+  el: JSValue;
+  e: TGUIInventoryItem;
+begin
+  for el in fItems do
+  begin
+    e:=TGUIInventoryItem(el);
+
+    if (e.Item=AItem) and (e.Animation=AAnimation) then
+    begin
+      if e.count>=ACount then
+      begin
+        e.Count:=e.Count - acount;
+        if e.Count<=0 then
+        begin
+          RemoveChild(e);
+          e.Free;
+          RepackItems;
+        end;
+        exit(true);
+      end
+      else
+        exit(false);
+    end;
+  end;
 end;
 
 procedure TGUIPanel.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -129,10 +278,19 @@ end;
 
 procedure TGUILabel.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 var
-  measurement: TJSTextMetrics;
-  ly, lx: double;
-begin
-  TGameFont.Render(AContext, fTextRun, AViewport, Color);
+  SubViewPort: TGameViewport;
+  H, Scaling: Double;
+begin                                                
+  H:=fTextRun.Height-fTextRun.Y;
+  Scaling:=fSize / H;
+
+  SubViewPort:=AViewport;
+  SubViewPort.ModelView:=TPMatrix.CreateTranslation(-fTextRun.X, -fTextRun.Y, 0)
+    .Multiply(TPMatrix.CreateScale(scaling, scaling,1))
+    .Multiply(AViewport.ModelView)
+    .Multiply(TPMatrix.CreateTranslation(Position.X, Position.Y, 0));
+
+  TGameFont.Render(AContext, fTextRun, SubViewPort, Color);
 
   inherited Render(AContext, AViewport);
 end;
