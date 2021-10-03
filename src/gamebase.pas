@@ -18,9 +18,10 @@ type
   TGameBase = class;
 
   TGameColor = record
-    R,G,B: double;
+    R,G,B,A: double;
 
-    class function New(AR,AG,AB: double): TGameColor; static;
+    class function Transparent: TGameColor; static;
+    class function New(AR,AG,AB: double; AA: double = 1.0): TGameColor; static;
   end;
 
   TGameViewport = record
@@ -168,11 +169,17 @@ begin
   result:=(x and (x-1)) = 0;
 end;
 
-class function TGameColor.New(AR, AG, AB: double): TGameColor;
+class function TGameColor.Transparent: TGameColor;
+begin
+  result:=New(0,0,0,0);
+end;
+
+class function TGameColor.New(AR, AG, AB: double; AA: double): TGameColor;
 begin
   result.R:=AR;
   result.G:=AG;
   result.B:=AB;
+  result.A:=AA;
 end;
 
 function TGameShader.LoadShader(GL: TJSWebGLRenderingContext; const ASrc: string; AType: GLenum): TJSWebGLShader;

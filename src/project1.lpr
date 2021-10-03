@@ -31,10 +31,22 @@ type
 
     IntroElements: TJSArray;
 
+  private
+    // Main GUI
+    MainGUI: TGUI;
+    MainGuiPanel: TGUIPanel;
+
+    InvPanel: TGUIPanel;
+
+
+  private
+
     function ScreenToWorld(const APoint: TPVector): TPVector;
     function WindowToGround(const APoint: TPVector): TPVector;
 
     procedure LoadMap(const AStr: string);
+
+    procedure MakeGUI;
   protected
     function GetElements: TJSArray; override;
   public
@@ -59,7 +71,7 @@ var
   res: TTextRun;
   v: TGameViewport;
 begin
-  res:=GetFont('base').Draw('Click here to start');
+  res:=GetFont('sans').Draw('Click here to start');
 
   v:=AViewport;
   v.Projection:=TPMatrix.Ortho(-game.width/2, game.width/2, game.Height/2, -game.Height/2, -10, 10);
@@ -155,6 +167,30 @@ begin
   end;
 end;
 
+const
+  GUIHeight = 200;
+
+procedure TLD49Game.MakeGUI;
+var
+  t: TGUILabel;
+begin
+  MainGuiPanel:=TGUIPanel.Create;
+  MainGuiPanel.SetSize(0,Height-GUIHeight,Width,GUIHeight);
+  MainGuiPanel.BackGround:=TGameColor.New(1,0,0);
+  MainGUI.AddChild(MainGuiPanel);
+
+    InvPanel:=TGUIPanel.Create;
+    InvPanel.SetSize(0,0,300,GUIHeight);
+    InvPanel.BackGround:=TGameColor.new(0,1,0);
+    MainGuiPanel.AddChild(InvPanel);
+
+      t:=TGUILabel.Create;
+      t.Caption:='Inventory';
+      t.SetSize(0,0,350,0);
+      t.Size:=30;
+      InvPanel.AddChild(t);
+end;
+
 function TLD49Game.GetElements: TJSArray;
 begin
   case State of
@@ -167,6 +203,7 @@ end;
 procedure TLD49Game.DoClick(AX, AY: double; AButtons: longword);
 var
   p: TPVector;
+  h: boolean;
 begin
   inherited DoClick(AX, AY, AButtons);
 
@@ -175,11 +212,16 @@ begin
       State:=gsMain;
     gsMain:
       begin
-        p:=WindowToGround(TPVector.New(ax,ay));
-        Writeln(p.x,' x ',p.y,' x ',p.z);
+        MainGUI.DoClick(TGUIPoint.Create(ax,ay), h);
 
-        if assigned(player) then
-          Player.Target:=p;
+        if not h then
+        begin
+          p:=WindowToGround(TPVector.New(ax,ay));
+          Writeln(p.x,' x ',p.y,' x ',p.z);
+
+          if assigned(player) then
+            Player.Target:=p;
+        end;
       end;
   end;
 end;
@@ -194,6 +236,7 @@ begin
   TResources.AddImage('assets/grass.png');
   TResources.AddImage('assets/field.png');
   TResources.AddImage('assets/barley.png');
+  TResources.AddImage('assets/hops.png');
 
   TResources.AddImage('assets/farmer.png');
   TResources.AddImage('assets/king.png');
@@ -225,10 +268,16 @@ begin
   AddSprites(TResources.AddString('assets/sprites-buildings.json').Text);
 
   LoadTiles(TResources.AddString('assets/tiles.json').Text);
-  LoadFont('base', TResources.AddString('assets/custom-msdf.json').Text, TResources.AddImage('assets/custom.png'));
+  LoadFont('sans', TResources.AddString('assets/custom-msdf.json').Text, TResources.AddImage('assets/custom.png'));
 
   AddElement(EntitySystem);
   AddElement(Map);
+
+  MainGUI:=TGUI.Create;
+  MainGUI.Resize(Width,Height);
+  AddElement(MainGUI);
+
+  MakeGUI;
 
   LoadMap(TResources.AddString('assets/map.json').Text);
   Map.SetCurrentSector(StartSector);
@@ -239,10 +288,16 @@ begin
   inherited AfterResize;
 
   Viewport.Projection:=TPMatrix.Ortho(Width/4, -Width/4, Height/4, -Height/4, -10000, 10000);
-  Viewport.ModelView:=TPMatrix.LookAt(TPVector.New(450/2-20,450/2,0),
+  Viewport.ModelView:=TPMatrix.LookAt(TPVector.New(450/2-20,450/2-60,0),
                                       TPVector.New(300,-300,500),
                                       TPVector.New(0,0,-1));
 
+  if MainGUI<>nil then
+  begin
+    MainGUI.Resize(Width,Height);
+
+    MainGuiPanel.SetSize(0,Height-GUIHeight,Width,GUIHeight);
+  end;
   //Viewport.ModelView:=TPMatrix.CreateTranslation(-100,0,0);
   //Viewport.ModelView:=TPMatrix.CreateRotationZ(0.5).Multiply(TPMatrix.CreateTranslation(-100,0,0));
 end;

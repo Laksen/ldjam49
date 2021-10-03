@@ -32,6 +32,32 @@
         }
     },
     {
+        "name": "hops",
+        "texture": "assets/hops.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "stage0": [
+                { "frame": 0, "time": 0.25 }
+            ],
+            "stage1": [
+                { "frame": 1, "time": 0.25 }
+            ],
+            "stage2": [
+                { "frame": 2, "time": 0.25 }
+            ],
+            "stage3": [
+                { "frame": 3, "time": 0.25 }
+            ],
+            "stage4": [
+                { "frame": 4, "time": 0.25 }
+            ],
+            "stage5": [
+                { "frame": 5, "time": 0.25 }
+            ]
+        }
+    },
+    {
         "name": "field",
         "texture": "assets/field.png",
         "tile-width": 256,

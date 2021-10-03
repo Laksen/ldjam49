@@ -86,6 +86,7 @@ type
 
   TPlant = class(TGameElement)
   private
+    fMax,
     fSize: longint;
     fLastTime,fTime,fTimeOffset: Double;
     fSprite: TGameSprite;
@@ -96,7 +97,7 @@ type
   public
     procedure Harvest;
 
-    constructor Create(AX, AY: double; ASprite: TGameSprite);
+    constructor Create(AX, AY: double; ASprite: TGameSprite; AMaxStage: longint);
 
     property Size: longint read fSize;
     property Ready: boolean read GetReady;
@@ -120,6 +121,7 @@ type
     function GetName: string; override;
 
     function Sprite: TGameSprite; virtual;
+    function GetMax: integer; virtual;
 
     procedure Init(AEntity: TECEntity); override;
     procedure DeInit(AEntity: TECEntity); override;
@@ -132,6 +134,9 @@ type
   THops = class(TField)
   protected
     function GetName: string; override;
+
+    function Sprite: TGameSprite; override;
+    function GetMax: integer; override;
   end;
 
 var
@@ -382,6 +387,16 @@ begin
   result:='hops';
 end;
 
+function THops.Sprite: TGameSprite;
+begin
+  result:=GetSprite('hops');
+end;
+
+function THops.GetMax: integer;
+begin
+  Result:=5;
+end;
+
 function THarvestable.GetName: string;
 begin
   result:='harvestable';
@@ -389,7 +404,7 @@ end;
 
 function TPlant.GetReady: boolean;
 begin
-  result:= Size>=3;
+  result:= Size>=fMax;
 end;
 
 procedure TPlant.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -403,7 +418,7 @@ end;
 
 procedure TPlant.Update(AGame: TGameBase; ATimeMS: double);
 begin
-  if fSize<3 then
+  if fSize<fMax then
   begin
     if (ATimeMS-fLastTime)>1000*Config.GrowthTime then
     begin
@@ -422,9 +437,10 @@ begin
   fSize:=0;
 end;
 
-constructor TPlant.Create(AX, AY: double; ASprite: TGameSprite);
+constructor TPlant.Create(AX, AY: double; ASprite: TGameSprite; AMaxStage: longint);
 begin
   inherited Create;
+  fMax:=AMaxStage;
   fTimeOffset:=Random;
   fSize:=0;
   Position:=TPVector.New(ax,ay);
@@ -441,6 +457,11 @@ begin
   result:=GetSprite('barley');
 end;
 
+function TField.GetMax: integer;
+begin
+  result:=3;
+end;
+
 procedure TField.Init(AEntity: TECEntity);
 var
   plants: TJSArray;
@@ -454,7 +475,7 @@ begin
   TileComp.GetInfo(TLDSectorTile(AEntity), sec, x, y);
 
   for i:=0 to 19 do
-    plants.push(TPlant.Create((x+random)*Config.SectorSize, (y+random)*Config.SectorSize, Sprite));
+    plants.push(TPlant.Create((x+random)*Config.SectorSize, (y+random)*Config.SectorSize, Sprite, GetMax));
 
   for el in plants do
     Game.AddElement(TGameElement(el)).Visible:=false;

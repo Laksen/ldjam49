@@ -53,6 +53,7 @@ procedure AddSprites(const AJson: string);
 function GetSprite(const AName: string): TGameSprite;
 
 procedure RenderFrame(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport; const AQuad: TGameQuad; const AFrame: TGameFrame);
+procedure RenderQuad(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport; const AQuad: TGameQuad; const AColor: TGameColor);
 
 implementation
 
@@ -63,7 +64,8 @@ var
 
   BuffersAllocated: boolean = false;
   Buffer, Elements: TJSWebGLBuffer;
-  Shader: TGameShader;
+  Shader,
+  ColorShader: TGameShader;
 
 procedure AllocateStuff(GL: TJSWebGLRenderingContext);
 begin
@@ -86,6 +88,18 @@ begin
                              'void main(void) {'+
                              '  gl_FragColor = texture2D(map, texCoord).rgba;'+
                              //'  if (gl_FragColor.a < 0.001) discard;'+
+                             '}'
+                             );
+
+  ColorShader:=TGameShader.Create('attribute vec3 position;'+
+                             'uniform mat4 projectionMatrix;'+
+                             'uniform mat4 modelViewMatrix;'+
+                             'void main(void){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+
+                             'precision mediump float;'+
+                             'uniform vec4 color;'+
+                             'void main(void) {'+
+                             '  gl_FragColor = color;'+
                              '}'
                              );
 end;
@@ -182,6 +196,56 @@ begin
   gl.drawElements(gl.TRIANGLES,2*3,gl.UNSIGNED_SHORT,0);
 
   GL.disable(GL.BLEND);
+end;
+
+procedure RenderQuad(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport; const AQuad: TGameQuad; const AColor: TGameColor);
+var
+  i, i2: Integer;
+  vertices: TJSFloat32Array;
+  indices: TJSUint16Array;
+  colorLoc, pmLoc, mmLoc: TJSWebGLUniformLocation;
+  vc: GLint;
+begin
+  AllocateStuff(GL);
+
+  vertices:=TJSFloat32Array.new(4*3);
+  indices:=TJSUint16Array.new(2*3);
+
+  for i2:=0 to 3 do
+  begin
+    vertices[i2*3+0]:=AQuad[i2].X;
+    vertices[i2*3+1]:=AQuad[i2].Y;
+    vertices[i2*3+2]:=AQuad[i2].Z;
+  end;
+
+  indices._set([4*i+0,4*i+1,4*i+2, 4*i+2,4*i+3,4*i+0], 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, Buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, nil);
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Elements);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, nil);
+
+  gl.useProgram(ColorShader.ID);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, Buffer);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Elements);
+
+  colorLoc:=gl.getUniformLocation(ColorShader.id, 'color');
+  GL.uniform4f(colorLoc, acolor.R,acolor.G,acolor.b,acolor.a);
+
+  pmLoc:=gl.getUniformLocation(ColorShader.ID, 'projectionMatrix');
+  mmLoc:=gl.getUniformLocation(ColorShader.ID, 'modelViewMatrix');
+  gl.uniformMatrix4fv(pmLoc, false, AViewport.Projection.Raw);
+  gl.uniformMatrix4fv(mmLoc, false, AViewport.ModelView.Raw);
+
+  vc:=gl.getAttribLocation(ColorShader.ID, 'position');
+  gl.vertexAttribPointer(vc,3,gl.FLOAT,false,0,0);
+  gl.enableVertexAttribArray(vc);
+
+  gl.drawElements(gl.TRIANGLES,2*3,gl.UNSIGNED_SHORT,0);
 end;
 
 constructor TGameSprite.CreateJSON(const AInfo: TJSObject);

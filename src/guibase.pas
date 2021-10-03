@@ -50,6 +50,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    procedure SetSize(AX,AY,AWidth,AHeight: longint);
+
     procedure DoClick(ACoord: TGUIPoint; var AHandled: boolean); virtual;
     procedure DoMove(ACoord: TGUIPoint; var AHit: boolean; var AControl: TGUIElement); virtual;
 
@@ -80,8 +82,11 @@ type
     fCurrentHover: TGUIElement;
   protected
     procedure NotifyRemovedSubchild(AChild: TGUIElement); override;
+    procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   public
     Viewport: TGameViewport;
+
+    procedure Resize(AWidth,AHeight: longint);
 
     procedure Update(AGame: TGameBase; ATimeMS: double); virtual;
 
@@ -98,13 +103,26 @@ begin
     fCurrentHover:=nil;
 end;
 
+procedure TGUI.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+begin
+  DoRender(AContext);
+end;
+
+procedure TGUI.Resize(AWidth, AHeight: longint);
+begin
+  Viewport.Projection:=TPMatrix.Ortho(0,AWidth,AHeight,0,-10,10);
+  Viewport.ModelView:=TPMatrix.Identity;
+end;
+
 procedure TGUI.Update(AGame: TGameBase; ATimeMS: double);
 begin
 end;
 
 procedure TGUI.DoRender(AContext: TJSWebGLRenderingContext);
 begin
-  Render(AContext, Viewport);
+  AContext.disable(AContext.DEPTH_TEST);
+  inherited Render(AContext,Viewport);
+  AContext.enable(AContext.DEPTH_TEST);
 end;
 
 procedure TGUI.DoClick(ACoord: TGUIPoint; var AHandled: boolean);
@@ -257,6 +275,13 @@ begin
     TGUIElement(fChildren[i]).Destroy;
   fChildren.Free;
   inherited Destroy;
+end;
+
+procedure TGUIElement.SetSize(AX, AY, AWidth, AHeight: longint);
+begin
+  Position:=TPVector.new(AX,AY);
+  Width:=AWidth;
+  Height:=AHeight;
 end;
 
 function TGUIElement.TranslateToLocal(const AGlobal: TGUIPoint): TGUIPoint;

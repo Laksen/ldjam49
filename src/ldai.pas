@@ -78,7 +78,7 @@ begin
         if (ATimeMS-last_update)>(UpdateInterval*1000) then
         begin
           x:=double(ent.get('farm-x'));
-          y:=double(ent.get('farm-x'));
+          y:=double(ent.get('farm-y'));
 
           newCoord:=TPVector.New((x+random)*Config.SectorSize, (y+random)*Config.SectorSize);
           char.Target:=newCoord;

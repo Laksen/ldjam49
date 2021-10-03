@@ -29,6 +29,10 @@
             "tile": "field",
             "spawn": ["farmer"]
         },
+        "2": {
+            "tile": "hops",
+            "spawn": ["farmer"]
+        },
         "6": {
             "tile": "well"
         },

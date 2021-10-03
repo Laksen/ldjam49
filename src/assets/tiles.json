@@ -14,7 +14,7 @@
         },
         "hops":
         {
-            "sprite": "grass",
+            "sprite": "field",
             "animation": "idle",
             "behavior": ["harvestable", "hops"]
         },

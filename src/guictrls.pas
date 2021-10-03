@@ -5,29 +5,33 @@ unit guictrls;
 interface
 
 uses
-  GameBase,
+  GameBase, GameSprite, GameMath, GameFont,
   guibase,
   web, webgl;
 
 type
   TGUIImage = class(TGUIElement)
   private
-    fImage: TJSElement;
+    fAnimation: string;
+    fSprite: TGameSprite;
+    fTime: double;
   protected
+    procedure Update(AGame: TGameBase; ATimeMS: double); override;
     procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   public
-    property Image: TJSElement read fImage write fImage;
+    property Sprite: TGameSprite read fSprite write fSprite;
+    property Animation: string read fAnimation write fAnimation;
   end;
 
   TGUIPanel = class(TGUIElement)
   private
-    fBackGround: string;
+    fBackGround: TGameColor;
   protected
     procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   public
     constructor Create;
 
-    property BackGround: string read fBackGround write fBackGround;
+    property BackGround: TGameColor read fBackGround write fBackGround;
   end;
 
   TGUILabelVAlign = (vaTop, vaMiddle, vaBottom);
@@ -36,21 +40,28 @@ type
   TGUILabel = class(TGUIElement)
   private
     fCaption: string;
-    fFormat,
+    fColor: TGameColor;
     fFont: string;
     fHAlign: TGUILabelHAlign;
     fSize: longint;
     fVAlign: TGUILabelVAlign;
+
+    fTextRun: TTextRun;
+    procedure Redraw;
+
+    procedure SetCaption(const AValue: string);
     procedure SetFont(AValue: string);
-    procedure SetSize(AValue: longint);
+    procedure SetFontSize(AValue: longint);
   protected
     procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   public
     constructor Create;
 
-    property Caption: string read fCaption write fCaption;
+    property Caption: string read fCaption write SetCaption;
     property Font: string read fFont write SetFont;
-    property Size: longint read fSize write SetSize;
+    property Size: longint read fSize write SetFontSize;
+
+    property Color: TGameColor read fColor write fColor;
 
     property VAlign: TGUILabelVAlign read fVAlign write fVAlign;
     property HAlign: TGUILabelHAlign read fHAlign write fHAlign;
@@ -66,12 +77,17 @@ implementation
 uses
   sysutils;
 
+function GetScreenQuad(APosition: TPVector; AWidth, AHeight: double): TGameQuad;
+begin
+  result[0]:=APosition.Add(TPVector.new(0,      0));
+  result[1]:=APosition.Add(TPVector.new(AWidth, 0));
+  result[2]:=APosition.Add(TPVector.new(AWidth, AHeight));
+  result[3]:=APosition.Add(TPVector.new(0,      AHeight));
+end;
+
 procedure TGUIPanel.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 begin
-  {AContext.save;
-  AContext.fillStyle:=fBackGround;
-  AContext.fillRect(Position.X,Position.Y, Width,Height);
-  AContext.restore;}
+  RenderQuad(AContext, AViewport, GetScreenQuad(position,width,height), BackGround);
 
   inherited Render(AContext, AViewport);
 end;
@@ -79,7 +95,20 @@ end;
 constructor TGUIPanel.Create;
 begin
   inherited Create;
-  fBackGround:='rgb(0,0,0,0.0)';
+  fBackGround:=TGameColor.New(0,0,0);
+end;
+
+procedure TGUILabel.Redraw;
+begin
+  fTextRun:=GetFont(fFont).Draw(fCaption);
+end;
+
+procedure TGUILabel.SetCaption(const AValue: string);
+begin
+  if fCaption=AValue then Exit;
+  fCaption:=AValue;
+
+  Redraw;
 end;
 
 procedure TGUILabel.SetFont(AValue: string);
@@ -87,14 +116,15 @@ begin
   if fFont=AValue then Exit;
   fFont:=AValue;
 
-  fFormat:=Format('%dpx %s', [fSize,fFont]);
+  Redraw;
 end;
 
-procedure TGUILabel.SetSize(AValue: longint);
+procedure TGUILabel.SetFontSize(AValue: longint);
 begin
   if fSize=AValue then Exit;
-  fSize:=AValue;                            
-  fFormat:=Format('%dpx %s', [fSize,fFont]);
+  fSize:=AValue;
+
+  Redraw;
 end;
 
 procedure TGUILabel.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -102,52 +132,30 @@ var
   measurement: TJSTextMetrics;
   ly, lx: double;
 begin
-  {AContext.save;
+  TGameFont.Render(AContext, fTextRun, AViewport, Color);
 
-  case VAlign of
-    vaTop:
-      begin
-        ly:=Position.Y;
-        AContext.textBaseline:='top';
-      end;
-    vaMiddle:
-      begin
-        ly:=Position.Y+Height/2;
-        AContext.textBaseline:='middle';
-      end;
-    vaBottom:
-      begin
-        ly:=Position.Y+Height;
-        AContext.textBaseline:='bottom';
-      end;
-  end;
-  AContext.font:=fFormat;
-  measurement:=AContext.measureText(fCaption);
-
-  case HAlign of
-    haLeft:   lx:=Position.X;
-    haMiddle: lx:=Position.X+(Width-measurement.width)/2;
-    haRight:  lx:=Position.X+Width-measurement.width;
-  end;
-
-  AContext.fillText(fCaption, lX, lY);
-
-  AContext.restore;}
   inherited Render(AContext, AViewport);
 end;
 
 constructor TGUILabel.Create;
 begin
   inherited Create;
+  fColor:=TGameColor.New(0,0,0);
   fFont:='sans';
   fSize:=12;
   fVAlign:=vaMiddle;
   fHAlign:=haMiddle;
 end;
 
+procedure TGUIImage.Update(AGame: TGameBase; ATimeMS: double);
+begin
+  fTime:=ATimeMS/1000;
+  inherited Update(AGame, ATimeMS);
+end;
+
 procedure TGUIImage.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 begin
-  //AContext.drawImage(fImage, Position.X, Position.Y, Width, Height);
+  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Width,Height), fSprite.GetFrame(fAnimation, fTime));
   inherited Render(AContext, AViewport);
 end;
 
