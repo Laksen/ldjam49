@@ -34,6 +34,7 @@ type
     fSprite: TGameSprite;
     fSector: Integer;
     fTime, fLastTime: Double;
+    function GetAlive: boolean;
   protected
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
     procedure Update(AGame: TGameBase; ATimeMS: double); override;
@@ -42,8 +43,10 @@ type
 
     property Name: string read fName;
     property Animation: string read fAnimation write fAnimation;
+    property Sector: integer read fSector;
     property Actor: TLDActor read fActor;
 
+    property Alive: boolean read GetAlive;
     property HP: double read fHP write fHP;
     property Speed: double read fSpeed write fSpeed;
     property BaseDamage: double read fBaseDamage write fBaseDamage;
@@ -53,15 +56,21 @@ type
   end;
 
 var
+  SectorMax: double;
+
   Player: TLDCharacter;
 
   Characters: TJSarray;
 
   Behaviors: TJSMap;
 
+function GetName: string;
+
 function SpawnCharacter(const AName, AType: string; ASector,AX,AY: integer): TLDCharacter;
 
 function RegisterComponent(const AName: string; AType: TECComponentClass): TECComponent;
+
+procedure ShowCharacters(ASector: longint);
 
 implementation
 
@@ -79,8 +88,10 @@ begin
   AChar.Speed:=double(cfg['speed']);
   AChar.BaseDamage:=double(cfg['damage']);
 
+  AChar.MoveTarget:=AChar.Position;
+
   for beh in TJSArray(cfg['behavior']) do
-    EntitySystem.AddComponent(AChar.Actor, TECComponent(Behaviors.get(beh)));
+    AChar.Actor.AddComponent(TECComponent(Behaviors.get(beh)));
 end;
 
 function GetCharacterSprite(const AType: string): TGameSprite;
@@ -100,8 +111,17 @@ begin
   result[3]:=ACenter.Add(TPVector.new(-AWidth/2, 0, 0));
 end;
 
+function GetName: string;
+begin
+  result:='Bob';
+end;
+
 function SpawnCharacter(const AName, AType: string; ASector, AX, AY: integer): TLDCharacter;
 begin
+  SectorMax:=Config.SectorSize*config.SectorTiles;
+
+  Writeln('Spawning ', atype);
+
   result:=TLDCharacter.Create(AName, GetCharacterSprite(AType), ASector, ax,ay);
   Characters.push(result);
 
@@ -116,10 +136,23 @@ begin
   Behaviors.&set(AName, result);
 end;
 
+procedure ShowCharacters(ASector: longint);
+var
+  ch: JSValue;
+begin
+  for ch in Characters do
+    TLDCharacter(ch).Visible:=TLDCharacter(ch).Sector=ASector;
+end;
+
 constructor TLDActor.Create(ASystem: TECSystem; ACharacter: TLDCharacter);
 begin
   inherited Create(ASystem);
   fCharacter:=ACharacter;
+end;
+
+function TLDCharacter.GetAlive: boolean;
+begin
+  result:=fHP>0;
 end;
 
 procedure TLDCharacter.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -143,7 +176,7 @@ begin
   fMoveLen:=fMoveDiff.LengthSqr;
   fMaxMove:=(fTime-fLastTime)*fSpeed;
 
-  if fMaxMove >= fMoveLen then
+  if sqr(fMaxMove) >= fMoveLen then
     Position:=fMoveTarget
   else if fMoveLen>0 then
     Position:=Position.Add(fMoveDiff.Scale(fMaxMove/sqrt(fMoveLen)));

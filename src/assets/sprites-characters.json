@@ -1,0 +1,57 @@
+[
+    {
+        "name": "farmer",
+        "texture": "assets/farmer.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 1.0 }
+            ]
+        }
+    },
+    {
+        "name": "guard",
+        "texture": "assets/guard.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 1.0 }
+            ]
+        }
+    },
+    {
+        "name": "peasant",
+        "texture": "assets/farmer.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 1.0 }
+            ]
+        }
+    },
+    {
+        "name": "king",
+        "texture": "assets/king.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 1.0 }
+            ]
+        }
+    },
+    {
+        "name": "player",
+        "texture": "assets/player.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [
+                { "frame": 0, "time": 1.0 }
+            ]
+        }
+    }
+]

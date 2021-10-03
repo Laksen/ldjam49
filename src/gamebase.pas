@@ -11,6 +11,9 @@ uses
   gameaudio, GameMath,
   sysutils, classes, contnrs;
 
+const
+  DisableDepthForTransparent = true;
+
 type
   TGameBase = class;
 
@@ -460,11 +463,14 @@ var
 begin
   toDraw:=fElements.filter(@OnlyVisible);
 
-  opaque:=fElements.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=TGameElement(element).Opaque; end);
+  opaque:=toDraw.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=TGameElement(element).Opaque; end);
   for el in opaque do
     TGameElement(el).Render(GL, Viewport);
-                               
-  transparent:=fElements.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=not TGameElement(element).Opaque; end);
+
+  if DisableDepthForTransparent then
+    GL.disable(GL.DEPTH_TEST);
+
+  transparent:=toDraw.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=not TGameElement(element).Opaque; end);
   toDraw:=transparent.sort(function (a,b : JSValue) : NativeInt
   begin
     result:=round(TGameElement(b).Position.y - TGameElement(a).Position.y);
@@ -472,6 +478,9 @@ begin
 
   for el in toDraw do
     TGameElement(el).Render(GL, Viewport);
+
+  if DisableDepthForTransparent then
+    GL.enable(GL.DEPTH_TEST);
 end;
 
 function TGameBase.AddElement(AElement: TGameElement): TGameElement;

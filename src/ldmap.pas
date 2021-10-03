@@ -14,13 +14,17 @@ uses
 type
   TLDMapTileInfo = class
   private
-    fAnimation: TGameAnimation;
+    fAnimation: string;
+    fSprite: TGameSprite;
     fBehaviors: TJSArray;
+    fWalkable: boolean;
   public
     constructor Create(AInfo: TJSObject);
 
-    property Animation: TGameAnimation read fAnimation;
+    property Animation: string read fAnimation;
+    property Sprite: TGameSprite read fSprite;
     property Behaviors: TJSArray read fBehaviors;
+    property Walkable: boolean read fWalkable;
   end;
 
   TLDMapTiles = class
@@ -55,7 +59,7 @@ type
   protected
     procedure Update(ATimeMS: double);
   public
-    constructor Create(ASectorID: integer);
+    constructor Create();
 
     procedure SetTile(AX,AY: longint; ATileType: TLDMapTileInfo);
     procedure SetTile(AX, AY: longint; const AName: string);
@@ -101,8 +105,6 @@ type
   TTileComponent = class(TECComponent)
   protected
     function GetName: string; override;
-
-    function HasData: boolean; override;
   public
     procedure SetInfo(ATile: TLDSectorTile; ASector, AX,AY: integer);
     procedure GetInfo(ATile: TLDSectorTile; var ASector, AX,AY: integer);
@@ -117,7 +119,6 @@ type
   protected
     function GetName: string; override;
 
-    function HasData: boolean; override;
     function Sprite: TGameSprite; virtual;
 
     procedure Init(AEntity: TECEntity); override;
@@ -140,7 +141,12 @@ procedure LoadTiles(const AInfo: string);
 
 implementation
 
+uses
+  ldactor;
+
 var
+  Sectors: integer = 0;
+
   TileInfo: TLDMapTiles;
   Behaviors: TJSMap;
 
@@ -156,11 +162,6 @@ end;
 function TTileComponent.GetName: string;
 begin
   result:='tile';
-end;
-
-function TTileComponent.HasData: boolean;
-begin
-  result:=true;
 end;
 
 procedure TTileComponent.SetInfo(ATile: TLDSectorTile; ASector, AX, AY: integer);
@@ -198,10 +199,10 @@ var
 begin
   SectorSize:=Config.SectorSize;
 
-  result[0]:=TPVector.new(X*SectorSize,     Y*SectorSize);
-  result[1]:=TPVector.new((X+1)*SectorSize, Y*SectorSize);
-  result[2]:=TPVector.new((X+1)*SectorSize, (Y+1)*SectorSize);
-  result[3]:=TPVector.new(X*SectorSize,     (Y+1)*SectorSize);
+  result[0]:=TPVector.new(X*SectorSize,     (Y+1)*SectorSize);
+  result[1]:=TPVector.new((X+1)*SectorSize, (Y+1)*SectorSize);
+  result[2]:=TPVector.new((X+1)*SectorSize, Y*SectorSize);
+  result[3]:=TPVector.new(X*SectorSize,     Y*SectorSize);
 end;
 
 procedure TLDMap.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -220,7 +221,7 @@ begin
     begin
       tile:=fCurrentSector.Tiles[i,i2];
 
-      RenderFrame(GL, AViewport, MakeTileQuad(i,i2), tile.TileType.Animation.GetFrame(tile.Time));
+      RenderFrame(GL, AViewport, MakeTileQuad(i,i2), tile.TileType.Sprite.GetFrame(tile.TileType.Animation, tile.Time));
     end;
 end;
 
@@ -232,11 +233,11 @@ end;
 
 function TLDMap.GetSector(AX, AY: longint): TLDSector;
 var
-  key: TJSArray;
+  key: string;
 begin
-  key:=TJSArray.new(ax,ay);
+  key:=inttostr(ax)+'x'+inttostr(ay);
   if not fSectors.has(key) then
-    fSectors.&set(key, TLDSector.Create(0));
+    fSectors.&set(key, TLDSector.Create());
 
   result:=TLDSector(fSectors.get(key));
 end;
@@ -262,10 +263,8 @@ begin
       begin
         tile:=fCurrentSector.Tiles[i][i2];
 
-        if EntitySystem.HasComponent(tile,hops) then
-          hops.SetPlantsVisible(tile, false);
-        if EntitySystem.HasComponent(tile,field) then
-          field.SetPlantsVisible(tile, false);
+        if tile.HasComponent(hops) then  hops.SetPlantsVisible(tile, false);
+        if tile.HasComponent(field) then field.SetPlantsVisible(tile, false);
       end;
   end;
 
@@ -279,9 +278,11 @@ begin
     begin
       tile:=fCurrentSector.Tiles[i][i2];
 
-      if EntitySystem.HasComponent(tile,hops) then hops.SetPlantsVisible(tile, true);
-      if EntitySystem.HasComponent(tile,field) then field.SetPlantsVisible(tile, true);
+      if tile.HasComponent(hops) then  hops.SetPlantsVisible(tile, true);
+      if tile.HasComponent(field) then field.SetPlantsVisible(tile, true);
     end;
+
+  ShowCharacters(fCurrentSector.ID);
 end;
 
 procedure TLDSectorTile.Update(ATimeMS: double);
@@ -314,20 +315,21 @@ begin
       fTiles[i][i2].Update(ATimeMS);
 end;
 
-constructor TLDSector.Create(ASectorID: integer);
+constructor TLDSector.Create();
 var
   i, i2: Integer;
   sectorTiles: LongInt;
 begin
   inherited Create;
-  fID:=ASectorID;
+  fID:=Sectors;
+  inc(Sectors);
 
   sectorTiles:=Config.SectorTiles;
 
   setlength(fTiles,sectorTiles,sectorTiles);
   for i:=0 to SectorTiles-1 do
     for i2:=0 to SectorTiles-1 do
-      fTiles[i][i2]:=TLDSectorTile.Create(EntitySystem, TileInfo['grass'], ASectorID, i,i2);
+      fTiles[i][i2]:=TLDSectorTile.Create(EntitySystem, TileInfo['grass'], fID, i,i2);
 end;
 
 procedure TLDSector.SetTile(AX, AY: longint; ATileType: TLDMapTileInfo);
@@ -338,31 +340,16 @@ end;
 
 procedure TLDSector.SetTile(AX, AY: longint; const AName: string);
 begin
-    SetTile(AX,AY, TileInfo[AName]);
+  SetTile(AX,AY, TileInfo[AName]);
 end;
 
 constructor TLDMapTileInfo.Create(AInfo: TJSObject);
-var
-  texture: TGameTexture;
-  tw, th, xcnt, ycnt: longint;
-  y, x: Integer;
-  interval: Double;
 begin
   inherited Create;
   fBehaviors:=TJSArray(AInfo['behavior']);
-  fAnimation:=TGameAnimation.Create('tile');
 
-  interval:=double(AInfo['tile-interval']);
-  tw:=integer(AInfo['tile-width']);
-  th:=integer(AInfo['tile-height']);
-
-  texture:=TResources.AddImage(string(AInfo['sprite']));
-  xcnt:=texture.Width div tw;
-  ycnt:=texture.height div th;
-
-  for y:=0 to ycnt-1 do
-    for x:=0 to xcnt-1 do
-      fAnimation.AddFrame(texture, TPVector.New(tw*x, y*th),  TPVector.New(tw*x+tw-1, y*th+th-1), interval);
+  fSprite:=GetSprite(string(AInfo['sprite']));
+  fAnimation:=string(AInfo['animation']);
 end;
 
 function TLDMapTiles.GetTile(const AName: string): TLDMapTileInfo;
@@ -449,11 +436,6 @@ begin
   result:='field';
 end;
 
-function TField.HasData: boolean;
-begin
-  result:=true;
-end;
-
 function TField.Sprite: TGameSprite;
 begin
   result:=GetSprite('barley');
@@ -475,7 +457,7 @@ begin
     plants.push(TPlant.Create((x+random)*Config.SectorSize, (y+random)*Config.SectorSize, Sprite));
 
   for el in plants do
-    Game.AddElement(TGameElement(el));
+    Game.AddElement(TGameElement(el)).Visible:=false;
 
   GetData(AEntity).&set('plants', plants);
 end;
@@ -504,6 +486,8 @@ var
   plants: TJSArray;
 begin
   plants:=TJSArray(GetData(AEntity).get('plants'));
+
+  writeln('Setting stuff ', AVisible);
 
   for el in plants do
     TGameElement(el).Visible:=AVisible;

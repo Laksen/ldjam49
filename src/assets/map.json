@@ -1,0 +1,39 @@
+{
+    "castle": {
+        "location": [1000,1000],
+        "default": "grass",
+
+        "1": {
+            "tile": "castle",
+            "spawn": ["king"]
+        },
+        "4": {
+            "spawn": ["guard", "guard", "guard"]
+        },
+        "6": {
+            "tile": "castlewall"
+        },
+        "7": {
+            "tile": "castlegate"
+        },
+        "8": {
+            "tile": "castlewall"
+        }
+    },
+
+    "start": {
+        "location": [1000,1001],
+        "default": "grass",
+
+        "0": {
+            "tile": "field",
+            "spawn": ["farmer"]
+        },
+        "6": {
+            "tile": "well"
+        },
+        "4": {
+            "spawn": ["player"]
+        }
+    }
+}

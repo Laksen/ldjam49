@@ -20,8 +20,12 @@ type
 
   TLD49Game = class(TGameBase)
   private
+    StartSector: TLDSector;
+
     function ScreenToWorld(const APoint: TPVector): TPVector;
     function WindowToGround(const APoint: TPVector): TPVector;
+
+    procedure LoadMap(const AStr: string);
   public
     procedure DoClick(AX, AY: double; AButtons: longword); override;
 
@@ -74,6 +78,70 @@ begin
   result:=pt.add(dir.scale(t));
 end;
 
+function iff(a,b: JSValue): JSValue;
+begin
+  if a=Undefined then
+    result:=b
+  else
+    result:=a;
+end;
+
+procedure TLD49Game.LoadMap(const AStr: string);
+var
+  info, obj, o2: TJSObject;
+  sector, default, tile, typ: String;
+  location: TJSArray;
+  idx, x, y: Integer;
+  sec: TLDSector;
+  spawn: JSValue;
+  ch: TLDCharacter;
+begin
+  info:=TJSObject(TJSJSON.parse(AStr));
+
+  for sector in TJSObject.keys(info) do
+  begin
+    obj:=TJSObject(info[sector]);
+
+    default:=string(obj['default']);
+    location:=TJSArray(obj['location']);
+                       
+    sec:=Map.GetSector(integer(location[0]), integer(location[1]));
+
+    for tile in TJSObject.keys(obj) do
+      case tile of
+        'location',
+        'default': ;
+
+      else
+        idx:=strtoint(tile);
+        o2:=TJSObject(obj[tile]);
+
+        typ:=string(iff(o2['tile'], default));
+
+        x:=idx mod Config.SectorTiles;
+        y:=idx div Config.SectorTiles;
+
+        sec.SetTile(x, y, typ);
+
+        for spawn in tjsarray(iff(o2['spawn'], tjsarray.new())) do
+        begin
+          //writeln(spawn);
+          ch:=SpawnCharacter(GetName, string(spawn), sec.ID, x*Config.SectorSize,y*Config.SectorSize);
+
+          case string(spawn) of
+            'farmer':
+              FarmerBehavior.SetField(ch.Actor, sec.ID, x,y);
+            'player':
+              begin
+                StartSector:=sec;
+                Player:=ch;
+              end;
+          end;
+        end;
+      end;
+  end;
+end;
+
 procedure TLD49Game.DoClick(AX, AY: double; AButtons: longword);
 var
   pt, p, pt2, dir: TPVector;
@@ -83,6 +151,9 @@ begin
 
   p:=WindowToGround(TPVector.New(ax,ay));
   Writeln(p.x,' x ',p.y,' x ',p.z);
+
+  if assigned(player) then
+    Player.MoveTarget:=p;
 end;
 
 procedure TLD49Game.InitializeResources;
@@ -94,29 +165,39 @@ begin
   // Map tiles
   TResources.AddImage('assets/grass.png');
   TResources.AddImage('assets/field.png');
-  TResources.AddString('assets/tiles.json');
-
   TResources.AddImage('assets/barley.png');
-  TResources.AddString('assets/barley.json');
 
   TResources.AddImage('assets/farmer.png');
-  TResources.AddString('assets/farmer.json');
+  TResources.AddImage('assets/king.png');
+  TResources.AddImage('assets/guard.png');
+  TResources.AddImage('assets/player.png');
+
+  TResources.AddImage('assets/bld.png');
+                                             
+  TResources.AddString('assets/tiles.json');
+
+  TResources.AddString('assets/sprites-plants.json');
+  TResources.AddString('assets/sprites-characters.json');
+  TResources.AddString('assets/sprites-buildings.json');
 
   // Misc
   TResources.AddString('assets/config.json');
+
+  TResources.AddString('assets/map.json');
 end;
 
 procedure TLD49Game.AfterLoad;
 var
   ch: TLDCharacter;
+  cs: TLDSector;
 begin
   inherited AfterLoad;
 
   LoadConfig(TResources.AddString('assets/config.json').Text);
 
-  AddSprite(TResources.AddString('assets/farmer.json').Text);
-
-  AddSprite(TResources.AddString('assets/barley.json').Text);
+  AddSprites(TResources.AddString('assets/sprites-plants.json').Text);
+  AddSprites(TResources.AddString('assets/sprites-characters.json').Text);
+  AddSprites(TResources.AddString('assets/sprites-buildings.json').Text);
 
   LoadTiles(TResources.AddString('assets/tiles.json').Text);
   LoadFont('base', TResources.AddString('assets/custom-msdf.json').Text, TResources.AddImage('assets/custom.png'));
@@ -126,14 +207,9 @@ begin
 
   //AddElement(ttext.Create(true));
 
-  Map.SetCurrentSector(Map.GetSector(0,0));
-  Map.CurrentSector.SetTile(1,1,'field');
-  Map.CurrentSector.SetTile(2,2,'field');
+  LoadMap(TResources.AddString('assets/map.json').Text);
 
-  ch:=SpawnCharacter('Bob', 'farmer', 0, 250, 200);
-  FarmerBehavior.SetField(ch.Actor, 0, 1,1);
-  ch:=SpawnCharacter('Jim', 'farmer', 0, 400, 400);
-  FarmerBehavior.SetField(ch.Actor, 0, 2,2);
+  Map.SetCurrentSector(StartSector);//Map.GetSector(1000,1001));
 end;
 
 procedure TLD49Game.AfterResize;

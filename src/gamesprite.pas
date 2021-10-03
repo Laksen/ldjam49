@@ -37,7 +37,7 @@ type
     fName: string;
     fAnimations: TJSMap;
   public
-    constructor CreateJSON(const AInfo: string);
+    constructor CreateJSON(const AInfo: TJSObject);
 
     function GetFrame(const AAnimation: string; ATime: double): TGameFrame;
 
@@ -49,7 +49,7 @@ type
 
   TGameQuad = array[0..3] of TPVector;
 
-procedure AddSprite(const AJson: string);
+procedure AddSprites(const AJson: string);
 function GetSprite(const AName: string): TGameSprite;
 
 procedure RenderFrame(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport; const AQuad: TGameQuad; const AFrame: TGameFrame);
@@ -90,12 +90,19 @@ begin
                              );
 end;
 
-procedure AddSprite(const AJson: string);
+procedure AddSprites(const AJson: string);
 var
   s: TGameSprite;
-begin
-  s:=TGameSprite.CreateJSON(AJson);
-  Sprites.&set(s.Name, s);
+  fInfo: TJSObject;
+  info: JSValue;
+begin                       
+  fInfo:=TJSObject(TJSJSON.parse(AJson));
+
+  for info in TJSArray(fInfo) do
+  begin
+    s:=TGameSprite.CreateJSON(TJSObject(info));
+    Sprites.&set(s.Name, s);
+  end;
 end;
 
 function GetSprite(const AName: string): TGameSprite;
@@ -177,9 +184,8 @@ begin
   GL.disable(GL.BLEND);
 end;
 
-constructor TGameSprite.CreateJSON(const AInfo: string);
+constructor TGameSprite.CreateJSON(const AInfo: TJSObject);
 var
-  fInfo: TJSObject;
   x,y,idx,XCount: Integer;
   texture: TGameTexture;
   animations: String;
@@ -190,19 +196,18 @@ var
 begin
   inherited Create;
   fAnimations:=TJSMap.new;
-  fInfo:=TJSObject(TJSJSON.parse(AInfo));
 
-  fName:=string(fInfo['name']);
+  fName:=string(AInfo['name']);
 
-  fWidth:=integer(fInfo['tile-width']);
-  fHeight:=integer(fInfo['tile-height']);
-  texture:=TResources.AddImage(string(fInfo['texture']));
+  fWidth:=integer(AInfo['tile-width']);
+  fHeight:=integer(AInfo['tile-height']);
+  texture:=TResources.AddImage(string(AInfo['texture']));
 
   XCount:=Texture.Width div Width;
 
-  for animations in TJSObject.keys(TJSObject(fInfo['animations'])) do
+  for animations in TJSObject.keys(TJSObject(AInfo['animations'])) do
   begin
-    obj:=TJSArray(TJSObject(fInfo['animations'])[animations]);
+    obj:=TJSArray(TJSObject(AInfo['animations'])[animations]);
 
     anim:=TGameAnimation.Create(animations);
     fAnimations.&set(animations, anim);

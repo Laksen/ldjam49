@@ -1,0 +1,14 @@
+[
+    {
+        "name": "buildings",
+        "texture": "assets/bld.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "castlewall": [{ "frame": 0, "time": 1.0 }],
+            "castlegate": [{ "frame": 1, "time": 1.0 }],
+            "castle": [{ "frame": 2, "time": 1.0 }],
+            "well": [{ "frame": 3, "time": 1.0 }]
+        }
+    }
+]

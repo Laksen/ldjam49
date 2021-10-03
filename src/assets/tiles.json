@@ -2,27 +2,49 @@
     "tiles": {
         "grass":
         {
-            "sprite": "assets/grass.png",
-            "tile-width": 256,
-            "tile-height": 256,
-            "tile-interval": 1.0,
+            "sprite": "grass",
+            "animation": "idle",
             "behavior": []
         },
         "field":
         {
-            "sprite": "assets/field.png",
-            "tile-width": 256,
-            "tile-height": 256,
-            "tile-interval": 1.0,
+            "sprite": "field",
+            "animation": "idle",
             "behavior": ["harvestable", "field"]
         },
         "hops":
         {
-            "sprite": "assets/grass.png",
-            "tile-width": 256,
-            "tile-height": 256,
-            "tile-interval": 1.0,
+            "sprite": "grass",
+            "animation": "idle",
             "behavior": ["harvestable", "hops"]
+        },
+        
+        "castlewall":
+        {
+            "sprite": "buildings",
+            "animation": "castlewall",
+            "behavior": [],
+            "walkable": false
+        },
+        "castlegate":
+        {
+            "sprite": "buildings",
+            "animation": "castlegate",
+            "behavior": [],
+            "walkable": false
+        },
+        "castle":
+        {
+            "sprite": "buildings",
+            "animation": "castle",
+            "behavior": [],
+            "walkable": false
+        },
+        "well":
+        {
+            "sprite": "buildings",
+            "animation": "well",
+            "behavior": []
         }
     }
 }

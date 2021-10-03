@@ -13,7 +13,10 @@ uses
 type
   TFarmerState = (fsFarming);
 
-  TFarmerBehavior = class(TECComponent)
+  TNPCBehavior = class(TECComponent)
+  end;
+
+  TFarmerBehavior = class(TNPCBehavior)
   private const
     UpdateInterval = 3;
   protected
@@ -24,8 +27,20 @@ type
     procedure SetField(AEntity: TECEntity; ASector, AX,AY: longint);
   end;
 
+  TPlayerBehavior = class(TECComponent)
+  end;
+
+  TGuardBehavior = class(TNPCBehavior)
+  end;
+
+  TKingBehavior = class(TNPCBehavior)
+  end;
+
 var
   FarmerBehavior: TFarmerBehavior;
+  GuardBehavior:  TGuardBehavior;
+  KingBehavior:   TKingBehavior;
+  PlayerBehavior: TPlayerBehavior;
 
 implementation
 
@@ -49,20 +64,28 @@ var
   last_update, x, y: Double;
   char: TLDCharacter;
   newCoord: TPVector;
+  state: TFarmerState;
 begin
   ent:=GetData(AEntity);
   char:=TLDActor(AEntity).Character;
 
-  last_update:=double(ent.get('last-update'));
-  if (ATimeMS-last_update)>(UpdateInterval*1000) then
-  begin
-    x:=double(ent.get('farm-x'));
-    y:=double(ent.get('farm-x'));
+  state:=TFarmerState(ent.get('state'));
 
-    newCoord:=TPVector.New((x+random)*Config.SectorSize, (y+random)*Config.SectorSize);
-    char.MoveTarget:=newCoord;
+  case state of
+    fsFarming:
+      begin
+        last_update:=double(ent.get('last-update'));
+        if (ATimeMS-last_update)>(UpdateInterval*1000) then
+        begin
+          x:=double(ent.get('farm-x'));
+          y:=double(ent.get('farm-x'));
 
-    ent.&set('last-update', ATimeMS-1000*random);
+          newCoord:=TPVector.New((x+random)*Config.SectorSize, (y+random)*Config.SectorSize);
+          char.MoveTarget:=newCoord;
+
+          ent.&set('last-update', ATimeMS-1000*random);
+        end;
+      end;
   end;
 end;
 
@@ -79,6 +102,9 @@ end;
 
 initialization
   FarmerBehavior:=TFarmerBehavior(RegisterComponent('farmer', TFarmerBehavior));
+  GuardBehavior:=TGuardBehavior(RegisterComponent('guard', TGuardBehavior));
+  KingBehavior:=TKingBehavior(RegisterComponent('king', TKingBehavior));
+  PlayerBehavior:=TPlayerBehavior(RegisterComponent('player', TPlayerBehavior));
 
 end.
 
