@@ -27,16 +27,18 @@ type
 
   TGameElement = class
   private
+    fOpaque: boolean;
     fPosition: TPVector;
     fVisible: boolean;
   protected
     procedure Update(AGame: TGameBase; ATimeMS: double); virtual;
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); virtual;
   public
-    constructor Create;
+    constructor Create(AOpaque: boolean = false);
 
     property Position: TPVector read fPosition write fPosition;
     property Visible: boolean read fVisible write fVisible;
+    property Opaque: boolean read fOpaque;
   end;
 
   TGameTexture = class
@@ -140,7 +142,7 @@ uses
   resources;
 
 const
-  DragStart = 10;
+  DragStart = 500;
 
 var
   GameInstance: TGameBase;
@@ -277,9 +279,10 @@ procedure TGameElement.Render(GL: TJSWebGLRenderingContext; const AViewport: TGa
 begin
 end;
 
-constructor TGameElement.Create;
+constructor TGameElement.Create(AOpaque: boolean);
 begin
   inherited Create;
+  fOpaque:=AOpaque;
   Visible:=true;
 end;
 
@@ -445,13 +448,30 @@ begin
   fToFree:=TJSArray.new;
 end;
 
+function OnlyVisible(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean;
+begin
+  result:=TGameElement(element).Visible;
+end;
+
 procedure TGameBase.Render;
 var
   el: JSValue;
+  toDraw, opaque, transparent: TJSArray;
 begin
-  for el in fElements do
-    if TGameElement(el).Visible then
-      TGameElement(el).Render(GL, Viewport);
+  toDraw:=fElements.filter(@OnlyVisible);
+
+  opaque:=fElements.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=TGameElement(element).Opaque; end);
+  for el in opaque do
+    TGameElement(el).Render(GL, Viewport);
+                               
+  transparent:=fElements.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=not TGameElement(element).Opaque; end);
+  toDraw:=transparent.sort(function (a,b : JSValue) : NativeInt
+  begin
+    result:=round(TGameElement(b).Position.y - TGameElement(a).Position.y);
+  end);
+
+  for el in toDraw do
+    TGameElement(el).Render(GL, Viewport);
 end;
 
 function TGameBase.AddElement(AElement: TGameElement): TGameElement;

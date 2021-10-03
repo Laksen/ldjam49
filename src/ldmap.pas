@@ -226,7 +226,7 @@ end;
 
 constructor TLDMap.Create;
 begin
-  inherited Create;
+  inherited Create(true);
   fSectors:=TJSMap.new;
 end;
 
@@ -472,12 +472,7 @@ begin
   TileComp.GetInfo(TLDSectorTile(AEntity), sec, x, y);
 
   for i:=0 to 19 do
-    plants.push(TPlant.Create(x*Config.SectorSize+random(Config.SectorSize), y*Config.SectorSize+random(Config.SectorSize), Sprite));
-
-  plants:=plants.sort(function (a,b : JSValue) : NativeInt
-  begin
-    result:=round(TPlant(b).Position.y - TPlant(a).Position.y);
-  end);
+    plants.push(TPlant.Create((x+random)*Config.SectorSize, (y+random)*Config.SectorSize, Sprite));
 
   for el in plants do
     Game.AddElement(TGameElement(el));

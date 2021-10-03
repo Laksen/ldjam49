@@ -34,7 +34,8 @@ end;
 
 procedure LoadConfig(const AInfo: string);
 var
-  fInfo: TJSObject;
+  fInfo, obj: TJSObject;
+  key: String;
 begin
   fInfo:=TJSObject(TJSJSON.parse(AInfo));
 
@@ -42,7 +43,11 @@ begin
   Config.SectorSize:=TryGet(fInfo,'SectorSize',150);
   Config.GrowthTime:=TryGet(fInfo,'GrowthTime',10);
 
-  Config.Characters:=TJSMap(fInfo['characters']);
+  Config.Characters:=TJSMap.new;
+
+  obj:=TJSObject(fInfo['Characters']);
+  for key in TJSObject.keys(obj) do
+    config.Characters.&set(key, obj[key]);
 end;
 
 end.

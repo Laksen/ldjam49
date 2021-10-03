@@ -1,38 +1,43 @@
 {
-    "SectorSize": 100,
-    "SectorTiles": 5,
+    "SectorSize": 150,
+    "SectorTiles": 3,
     "GrowthTime": 10,
 
     "Characters": {
         "player": {
             "hp": 100,
-            "speed": 100,
+            "speed": 60,
             "damage": 10,
-            "behavior": ["player"]
+            "behavior": ["player"],
+            "sprite": "player"
         },
         "farmer": {
             "hp": 20,
-            "speed": 80,
+            "speed": 40,
             "damage": 5,
-            "behavior": ["farmer"]
+            "behavior": ["farmer"],
+            "sprite": "farmer"
         },
         "peasant": {
             "hp": 20,
-            "speed": 80,
+            "speed": 40,
             "damage": 3,
-            "behavior": []
+            "behavior": [],
+            "sprite": "peasant"
         },
         "guard": {
             "hp": 50,
-            "speed": 90,
+            "speed": 50,
             "damage": 10,
-            "behavior": ["guard"]
+            "behavior": ["guard"],
+            "sprite": "guard"
         },
         "king": {
             "hp": 150,
-            "speed": 100,
+            "speed": 75,
             "damage": 25,
-            "behavior": ["king"]
+            "behavior": ["king"],
+            "sprite": "king"
         }
     }
 }

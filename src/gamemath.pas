@@ -26,6 +26,7 @@ type
 
     function Add(const A: TPVector): TPVector;
     function Sub(const A: TPVector): TPVector;
+    function RSub(const A: TPVector): TPVector;
     function Multiply(const A: TPVector): TPVector;
     function Scale(const A: double): TPVector;
 
@@ -48,10 +49,13 @@ type
   TPMatrix = class
   private
     fIsIdentity,
-    fIsTranslation: boolean;
+    fIsTranslation,
+    fHasInverse: boolean;
 
+    inv,
     V: TPMatrixArray;
 
+    function GetInverse: TPMatrix;
     function GetTranslation: TPVector;
   public
     constructor Create(const AMatrix: TPMatrixArray);
@@ -82,6 +86,7 @@ type
     property IsTranslation: boolean read fIsTranslation;
 
     property Raw: TPMatrixArray read V;
+    property Inverse: TPMatrix read GetInverse;
   end;
 
 implementation
@@ -101,6 +106,144 @@ end;
 function TPMatrix.GetTranslation: TPVector;
 begin
   result:=TPVector.New(V[3], V[7], V[11]);
+end;
+
+function TPMatrix.GetInverse: TPMatrix;
+var
+  det: Double;
+  i: longint;
+begin
+  if not fHasInverse then
+  begin
+    inv[0] := v[5]  * v[10] * v[15] -
+             v[5]  * v[11] * v[14] -
+             v[9]  * v[6]  * v[15] +
+             v[9]  * v[7]  * v[14] +
+             v[13] * v[6]  * v[11] -
+             v[13] * v[7]  * v[10];
+
+    inv[4] := -v[4]  * v[10] * v[15] +
+              v[4]  * v[11] * v[14] +
+              v[8]  * v[6]  * v[15] -
+              v[8]  * v[7]  * v[14] -
+              v[12] * v[6]  * v[11] +
+              v[12] * v[7]  * v[10];
+
+    inv[8] := v[4]  * v[9] * v[15] -
+             v[4]  * v[11] * v[13] -
+             v[8]  * v[5] * v[15] +
+             v[8]  * v[7] * v[13] +
+             v[12] * v[5] * v[11] -
+             v[12] * v[7] * v[9];
+
+    inv[12] := -v[4]  * v[9] * v[14] +
+               v[4]  * v[10] * v[13] +
+               v[8]  * v[5] * v[14] -
+               v[8]  * v[6] * v[13] -
+               v[12] * v[5] * v[10] +
+               v[12] * v[6] * v[9];
+
+    inv[1] := -v[1]  * v[10] * v[15] +
+              v[1]  * v[11] * v[14] +
+              v[9]  * v[2] * v[15] -
+              v[9]  * v[3] * v[14] -
+              v[13] * v[2] * v[11] +
+              v[13] * v[3] * v[10];
+
+    inv[5] := v[0]  * v[10] * v[15] -
+             v[0]  * v[11] * v[14] -
+             v[8]  * v[2] * v[15] +
+             v[8]  * v[3] * v[14] +
+             v[12] * v[2] * v[11] -
+             v[12] * v[3] * v[10];
+
+    inv[9] := -v[0]  * v[9] * v[15] +
+              v[0]  * v[11] * v[13] +
+              v[8]  * v[1] * v[15] -
+              v[8]  * v[3] * v[13] -
+              v[12] * v[1] * v[11] +
+              v[12] * v[3] * v[9];
+
+    inv[13] := v[0]  * v[9] * v[14] -
+              v[0]  * v[10] * v[13] -
+              v[8]  * v[1] * v[14] +
+              v[8]  * v[2] * v[13] +
+              v[12] * v[1] * v[10] -
+              v[12] * v[2] * v[9];
+
+    inv[2] := v[1]  * v[6] * v[15] -
+             v[1]  * v[7] * v[14] -
+             v[5]  * v[2] * v[15] +
+             v[5]  * v[3] * v[14] +
+             v[13] * v[2] * v[7] -
+             v[13] * v[3] * v[6];
+
+    inv[6] := -v[0]  * v[6] * v[15] +
+              v[0]  * v[7] * v[14] +
+              v[4]  * v[2] * v[15] -
+              v[4]  * v[3] * v[14] -
+              v[12] * v[2] * v[7] +
+              v[12] * v[3] * v[6];
+
+    inv[10] := v[0]  * v[5] * v[15] -
+              v[0]  * v[7] * v[13] -
+              v[4]  * v[1] * v[15] +
+              v[4]  * v[3] * v[13] +
+              v[12] * v[1] * v[7] -
+              v[12] * v[3] * v[5];
+
+    inv[14] := -v[0]  * v[5] * v[14] +
+               v[0]  * v[6] * v[13] +
+               v[4]  * v[1] * v[14] -
+               v[4]  * v[2] * v[13] -
+               v[12] * v[1] * v[6] +
+               v[12] * v[2] * v[5];
+
+    inv[3] := -v[1] * v[6] * v[11] +
+              v[1] * v[7] * v[10] +
+              v[5] * v[2] * v[11] -
+              v[5] * v[3] * v[10] -
+              v[9] * v[2] * v[7] +
+              v[9] * v[3] * v[6];
+
+    inv[7] := v[0] * v[6] * v[11] -
+             v[0] * v[7] * v[10] -
+             v[4] * v[2] * v[11] +
+             v[4] * v[3] * v[10] +
+             v[8] * v[2] * v[7] -
+             v[8] * v[3] * v[6];
+
+    inv[11] := -v[0] * v[5] * v[11] +
+               v[0] * v[7] * v[9] +
+               v[4] * v[1] * v[11] -
+               v[4] * v[3] * v[9] -
+               v[8] * v[1] * v[7] +
+               v[8] * v[3] * v[5];
+
+    inv[15] := v[0] * v[5] * v[10] -
+              v[0] * v[6] * v[9] -
+              v[4] * v[1] * v[10] +
+              v[4] * v[2] * v[9] +
+              v[8] * v[1] * v[6] -
+              v[8] * v[2] * v[5];
+
+    det := v[0] * inv[0] + v[1] * inv[4] + v[2] * inv[8] + v[3] * inv[12];
+
+    if det = 0 then
+    begin            
+      writeln('fff');
+      exit(identity);
+    end;
+
+    det := 1.0 / det;
+
+    for i:=0 to 15 do
+        inv[i] := inv[i] * det;
+
+    fHasInverse:=true;
+  end;
+
+  result:=TPMatrix.Create(inv);
 end;
 
 constructor TPMatrix.Create(const AMatrix: TPMatrixArray);
@@ -352,7 +495,7 @@ begin
   begin
     Result.X:=AVec.X*V[0]+AVec.Y*V[1]+AVec.Z*V[2]+V[3];
     Result.Y:=AVec.X*V[4]+AVec.Y*V[5]+AVec.Z*V[6]+V[7];
-    Result.Z:=AVec.X*V[8]+AVec.Y*V[9]+AVec.Z*V[10]+V[11]
+    Result.Z:=AVec.X*V[8]+AVec.Y*V[9]+AVec.Z*V[10]+V[11];
   end;
 end;
 
@@ -446,6 +589,13 @@ begin
   result.X:=X-A.X;
   result.Y:=Y-A.Y;
   result.Z:=Z-A.Z;
+end;
+
+function TPVector.RSub(const A: TPVector): TPVector;
+begin
+  result.X:=A.X-X;
+  result.Y:=A.Y-Y;
+  result.Z:=A.Z-Z;
 end;
 
 function TPVector.Multiply(const A: TPVector): TPVector;

@@ -107,7 +107,7 @@ end;
 
 function TECComponent.HasData: boolean;
 begin
-  result:=false;
+  result:=true;
 end;
 
 procedure TECComponent.Init(AEntity: TECEntity);
