@@ -50,7 +50,7 @@ type
     function MeasureText(const AStr: string): TSize;
     function Draw(const AStr: string): TTextRun;
 
-    class procedure Render(GL: TJSWebGLRenderingContext; res: TTextRun; AViewport: TGameViewport; AColor: TGameColor);
+    class procedure Render(GL: TJSWebGLRenderingContext; res: TTextRun; AViewport: TGameViewport; AColor: TGameColor; AOpacity: double = 1);
   end;
 
 procedure LoadFont(const AName, ASrcInfo: string; ASrcImage: TGameTexture);
@@ -266,7 +266,7 @@ begin
   result.Width:=Max(result.Width, x+delta)+double(fPadding[1])+double(fPadding[3]);
 end;
 
-class procedure TGameFont.Render(GL: TJSWebGLRenderingContext; res: TTextRun; AViewport: TGameViewport; AColor: TGameColor);
+class procedure TGameFont.Render(GL: TJSWebGLRenderingContext; res: TTextRun; AViewport: TGameViewport; AColor: TGameColor; AOpacity: double);
 var
   i, i2: Integer;
   vertices: TJSFloat32Array;
@@ -312,7 +312,7 @@ begin
 
   texLoc:=gl.getUniformLocation(MSDFShader.ID, 'map');
 
-  gl.uniform1f(gl.getUniformLocation(MSDFShader.ID, 'opacity'), 1.0);
+  gl.uniform1f(gl.getUniformLocation(MSDFShader.ID, 'opacity'), AOpacity);
   gl.uniform3f(gl.getUniformLocation(MSDFShader.ID, 'color'), AColor.R,AColor.G,AColor.B);
 
   gl.activeTexture(gl.TEXTURE0);

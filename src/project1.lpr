@@ -18,14 +18,25 @@ type
     procedure Render(gl: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   end;
 
+  TLDGameState = (
+    gsIntro,
+    gsMain,
+    gsDialog
+  );
+
   TLD49Game = class(TGameBase)
   private
     StartSector: TLDSector;
+    State: TLDGameState;
+
+    IntroElements: TJSArray;
 
     function ScreenToWorld(const APoint: TPVector): TPVector;
     function WindowToGround(const APoint: TPVector): TPVector;
 
     procedure LoadMap(const AStr: string);
+  protected
+    function GetElements: TJSArray; override;
   public
     procedure DoClick(AX, AY: double; AButtons: longword); override;
 
@@ -33,6 +44,8 @@ type
     procedure AfterLoad; override;
 
     procedure AfterResize; override;
+
+    constructor Create; override;
   end;
 
 procedure TText.Update(AGame: TGameBase; ATimeMS: double);
@@ -46,7 +59,7 @@ var
   res: TTextRun;
   v: TGameViewport;
 begin
-  res:=GetFont('base').Draw(format('%dx%d', [game.width,game.height]));
+  res:=GetFont('base').Draw('Click here to start');
 
   v:=AViewport;
   v.Projection:=TPMatrix.Ortho(-game.width/2, game.width/2, game.Height/2, -game.Height/2, -10, 10);
@@ -142,18 +155,33 @@ begin
   end;
 end;
 
+function TLD49Game.GetElements: TJSArray;
+begin
+  case State of
+    gsIntro: result:=IntroElements;
+    gsMain:  result:=inherited GetElements;
+    gsDialog: result:=TJSArray.new;
+  end;
+end;
+
 procedure TLD49Game.DoClick(AX, AY: double; AButtons: longword);
 var
-  pt, p, pt2, dir: TPVector;
-  t: Double;
+  p: TPVector;
 begin
   inherited DoClick(AX, AY, AButtons);
 
-  p:=WindowToGround(TPVector.New(ax,ay));
-  Writeln(p.x,' x ',p.y,' x ',p.z);
+  case State of
+    gsIntro:
+      State:=gsMain;
+    gsMain:
+      begin
+        p:=WindowToGround(TPVector.New(ax,ay));
+        Writeln(p.x,' x ',p.y,' x ',p.z);
 
-  if assigned(player) then
-    Player.MoveTarget:=p;
+        if assigned(player) then
+          Player.Target:=p;
+      end;
+  end;
 end;
 
 procedure TLD49Game.InitializeResources;
@@ -187,9 +215,6 @@ begin
 end;
 
 procedure TLD49Game.AfterLoad;
-var
-  ch: TLDCharacter;
-  cs: TLDSector;
 begin
   inherited AfterLoad;
 
@@ -205,11 +230,8 @@ begin
   AddElement(EntitySystem);
   AddElement(Map);
 
-  //AddElement(ttext.Create(true));
-
   LoadMap(TResources.AddString('assets/map.json').Text);
-
-  Map.SetCurrentSector(StartSector);//Map.GetSector(1000,1001));
+  Map.SetCurrentSector(StartSector);
 end;
 
 procedure TLD49Game.AfterResize;
@@ -223,6 +245,12 @@ begin
 
   //Viewport.ModelView:=TPMatrix.CreateTranslation(-100,0,0);
   //Viewport.ModelView:=TPMatrix.CreateRotationZ(0.5).Multiply(TPMatrix.CreateTranslation(-100,0,0));
+end;
+
+constructor TLD49Game.Create;
+begin
+  inherited Create;
+  IntroElements:=TJSArray.new(TText.Create());
 end;
 
 begin

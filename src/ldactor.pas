@@ -26,7 +26,7 @@ type
   private
     fBaseDamage: double;
     fHP: double;
-    fMoveTarget: TPVector;
+    fTarget: TPVector;
     fName: String;
     fActor: TLDActor;
     fAnimation: string;
@@ -52,7 +52,8 @@ type
     property BaseDamage: double read fBaseDamage write fBaseDamage;
 
     // Movement
-    property MoveTarget: TPVector read fMoveTarget write fMoveTarget;
+    property Target: TPVector read fTarget write fTarget;
+
   end;
 
 var
@@ -88,7 +89,7 @@ begin
   AChar.Speed:=double(cfg['speed']);
   AChar.BaseDamage:=double(cfg['damage']);
 
-  AChar.MoveTarget:=AChar.Position;
+  AChar.Target:=AChar.Position;
 
   for beh in TJSArray(cfg['behavior']) do
     AChar.Actor.AddComponent(TECComponent(Behaviors.get(beh)));
@@ -172,14 +173,16 @@ begin
   inherited Update(AGame, ATimeMS);
   fTime:=ATimeMS/1000;
 
-  fMoveDiff:=fMoveTarget.Sub(Position);
+  fMoveDiff:=fTarget.Sub(Position);
   fMoveLen:=fMoveDiff.LengthSqr;
   fMaxMove:=(fTime-fLastTime)*fSpeed;
 
   if sqr(fMaxMove) >= fMoveLen then
-    Position:=fMoveTarget
+    Position:=fTarget
   else if fMoveLen>0 then
     Position:=Position.Add(fMoveDiff.Scale(fMaxMove/sqrt(fMoveLen)));
+
+  Position:=Position.Clamp(TPVector.New(0,0), TPVector.new(SectorMax,SectorMax));
 
   fLastTime:=fTime;
 end;

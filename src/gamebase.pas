@@ -106,6 +106,8 @@ type
     Canvas: TJSHTMLCanvasElement;
     GL: TJSWebGLRenderingContext;
 
+    function GetElements: TJSArray; virtual;
+
     procedure InitializeResources; virtual;
     procedure AfterLoad; virtual;
 
@@ -126,7 +128,7 @@ type
     function AddElement(AElement: TGameElement): TGameElement;
     procedure RemoveElement(AElement: TGameElement; AFreeLater: boolean=false);
 
-    constructor Create;
+    constructor Create; virtual;
 
     procedure Run;
 
@@ -398,6 +400,11 @@ begin
   window.requestAnimationFrame(@OnRequestFrame);
 end;
 
+function TGameBase.GetElements: TJSArray;
+begin
+  result:=fElements;
+end;
+
 procedure TGameBase.InitializeResources;
 begin
 end;
@@ -443,7 +450,7 @@ var
 begin           
   fAudio.Update(ATimeMS);
 
-  for el in fElements do
+  for el in GetElements() do
     TGameElement(el).Update(self, ATimeMS);
 
   for i:=0 to fToFree.Length-1 do
@@ -461,7 +468,7 @@ var
   el: JSValue;
   toDraw, opaque, transparent: TJSArray;
 begin
-  toDraw:=fElements.filter(@OnlyVisible);
+  toDraw:=GetElements().filter(@OnlyVisible);
 
   opaque:=toDraw.filter(function(element: JSValue; index: NativeInt; anArray: TJSArray): Boolean begin result:=TGameElement(element).Opaque; end);
   for el in opaque do

@@ -1,0 +1,48 @@
+{
+    "farmer": {
+        "start": "Hello there brewer",
+        "entries": [
+            {
+                "option": "Can I buy your current harvest?",
+                "cost": 20,
+                "trigger": "buy_harvest"
+            },
+            {
+                "option": "Tell me about something",
+                "subdialog": [
+                    {
+                        "option": "What's up with the king?",
+                        "response": ["Have you slept under a rock?",
+                                    "Well, noone knows exactly what happened",
+                                    "I think he went mad with power and greed believing people will work faster in the fields",
+                                    "Don't tell anyone but that is not the case"]
+                    }
+                ]
+            },
+            {
+                "option": "Would you like to buy some delicious beer?",
+                "beer": 1,
+                "trigger": "buy_beer"
+            },
+            {
+                "option": "Would you like some delicious beer, for free?",
+                "beer": 1,
+                "trigger": "give_beer"
+            }
+        ]
+    },
+    "king": {
+        "start": "What is it then, peasant?",
+        "entries": [
+            {
+                "option": "Why have their highness outlawed beer?",
+                "trigger": "insolence",
+                "response": ["Dare you question the kings wisdom?",
+                             "We cannot ignore this. Guards"]
+            },
+            {
+                
+            }
+        ]
+    }
+}

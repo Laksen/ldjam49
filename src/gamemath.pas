@@ -30,6 +30,8 @@ type
     function Multiply(const A: TPVector): TPVector;
     function Scale(const A: double): TPVector;
 
+    function Clamp(const AMin, AMax: TPVector): TPVector;
+
     class function Cross(A,B: TPVector): TPVector; static;
   end;
 
@@ -610,6 +612,23 @@ begin
   result.X:=X*A;
   result.Y:=Y*A;
   result.Z:=Z*A;
+end;
+
+function FClamp(AValue, amin, amax: double): double;
+begin
+  if AValue<amin then
+    result:=AMin
+  else if AValue>amax then
+    result:=AMax
+  else
+    result:=AValue;
+end;
+
+function TPVector.Clamp(const AMin, AMax: TPVector): TPVector;
+begin
+  result.X:=FClamp(X,AMin.X,AMax.X);
+  result.Y:=FClamp(Y,AMin.Y,AMax.Y);
+  result.Z:=FClamp(Z,AMin.Z,AMax.Z);
 end;
 
 class function TPVector.Cross(A, B: TPVector): TPVector;

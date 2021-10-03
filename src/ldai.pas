@@ -81,7 +81,7 @@ begin
           y:=double(ent.get('farm-x'));
 
           newCoord:=TPVector.New((x+random)*Config.SectorSize, (y+random)*Config.SectorSize);
-          char.MoveTarget:=newCoord;
+          char.Target:=newCoord;
 
           ent.&set('last-update', ATimeMS-1000*random);
         end;
