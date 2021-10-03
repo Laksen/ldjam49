@@ -2921,6 +2921,31 @@ rtl.module("GameMath",["System","Classes","SysUtils","Math"],function () {
       this.fIsTranslation = true;
       return this;
     };
+    this.CreateRotationZ = function (ARotation) {
+      var cs = 0.0;
+      var ss = 0.0;
+      this.Identity();
+      if (ARotation !== 0) {
+        cs = Math.cos(ARotation);
+        ss = Math.sin(ARotation);
+        this.V[0] = cs;
+        this.V[1] = -ss;
+        this.V[4] = ss;
+        this.V[5] = cs;
+        this.fIsIdentity = false;
+        this.fIsTranslation = false;
+      };
+      return this;
+    };
+    this.CreateScale = function (AX, AY, AZ) {
+      this.Identity();
+      this.V[0] = AX;
+      this.V[5] = AY;
+      this.V[10] = AZ;
+      this.fIsIdentity = false;
+      this.fIsTranslation = false;
+      return this;
+    };
     this.Ortho = function (ALeft, ARight, ABottom, ATop, AZNear, AZFar) {
       var Width = 0.0;
       var Height = 0.0;
@@ -2988,6 +3013,29 @@ rtl.module("GameMath",["System","Classes","SysUtils","Math"],function () {
       var Result = null;
       Result = $mod.TPMatrix.$create("Create$1",[[this.V[0],this.V[4],this.V[8],this.V[12],this.V[1],this.V[5],this.V[9],this.V[13],this.V[2],this.V[6],this.V[10],this.V[14],this.V[3],this.V[7],this.V[11],this.V[15]]]);
       return Result;
+    };
+    this.TransformInplace = function (AVectors) {
+      var i = 0;
+      var x = 0.0;
+      var y = 0.0;
+      var z = 0.0;
+      if (this.fIsIdentity) return;
+      if (this.fIsTranslation) {
+        for (var $l = 0, $end = rtl.length(AVectors.get()) - 1; $l <= $end; $l++) {
+          i = $l;
+          AVectors.get()[i].X = AVectors.get()[i].X + this.V[3];
+          AVectors.get()[i].Y = AVectors.get()[i].Y + this.V[7];
+          AVectors.get()[i].Z = AVectors.get()[i].Z + this.V[11];
+        }}
+       else for (var $l1 = 0, $end1 = rtl.length(AVectors.get()) - 1; $l1 <= $end1; $l1++) {
+        i = $l1;
+        x = AVectors.get()[i].X;
+        y = AVectors.get()[i].Y;
+        z = AVectors.get()[i].Z;
+        AVectors.get()[i].X = (x * this.V[0]) + (y * this.V[1]) + (z * this.V[2]) + this.V[3];
+        AVectors.get()[i].Y = (x * this.V[4]) + (y * this.V[5]) + (z * this.V[6]) + this.V[7];
+        AVectors.get()[i].Z = (x * this.V[8]) + (y * this.V[9]) + (z * this.V[10]) + this.V[11];
+      };
     };
   });
   $mod.$implcode = function () {
@@ -4224,7 +4272,7 @@ rtl.module("GameFont",["System","Classes","SysUtils","Math","JS","Web","webgl","
     $impl.Fonts = new Map();
   };
 },[]);
-rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","guibase","Web","webgl"],function () {
+rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","guibase","Web","webgl","JS"],function () {
   "use strict";
   var $mod = this;
   var $impl = $mod.$impl;
@@ -4279,7 +4327,14 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.Redraw();
     };
     this.Render = function (AContext, AViewport) {
-      pas.GameFont.TGameFont.Render(AContext,pas.GameFont.TTextRun.$clone(this.fTextRun),pas.GameBase.TGameViewport.$clone(AViewport),pas.GameBase.TGameColor.$clone(this.fColor),1);
+      var SubViewPort = pas.GameBase.TGameViewport.$new();
+      var H = 0.0;
+      var Scaling = 0.0;
+      H = this.fTextRun.Height - this.fTextRun.Y;
+      Scaling = this.fSize / H;
+      SubViewPort.$assign(AViewport);
+      SubViewPort.ModelView = pas.GameMath.TPMatrix.$create("CreateTranslation",[-this.fTextRun.X,-this.fTextRun.Y,0]).Multiply$1(pas.GameMath.TPMatrix.$create("CreateScale",[Scaling,Scaling,1])).Multiply$1(AViewport.ModelView).Multiply$1(pas.GameMath.TPMatrix.$create("CreateTranslation",[this.fPosition.X,this.fPosition.Y,0]));
+      pas.GameFont.TGameFont.Render(AContext,pas.GameFont.TTextRun.$clone(this.fTextRun),pas.GameBase.TGameViewport.$clone(SubViewPort),pas.GameBase.TGameColor.$clone(this.fColor),1);
       pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
     };
     this.Create$3 = function () {
@@ -4290,6 +4345,99 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.fVAlign = 1;
       this.fHAlign = 1;
       return this;
+    };
+  });
+  rtl.createClass(this,"TGUIInventoryItem",pas.guibase.TGUIElement,function () {
+    this.$init = function () {
+      pas.guibase.TGUIElement.$init.call(this);
+      this.fItem = null;
+      this.fItems = 0;
+      this.fAnimation = "";
+      this.fLabel = null;
+    };
+    this.$final = function () {
+      this.fItem = undefined;
+      this.fLabel = undefined;
+      pas.guibase.TGUIElement.$final.call(this);
+    };
+    this.SetItems = function (AValue) {
+      if (this.fItems === AValue) return;
+      this.fItems = AValue;
+      this.fLabel.SetCaption(pas.SysUtils.IntToStr(AValue));
+    };
+    this.Render = function (AContext, AViewport) {
+      pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fHeight,this.fHeight),this.fItem.GetFrame(this.fAnimation,0));
+      pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
+    };
+    this.SetSize = function (AX, AY, AWidth, AHeight) {
+      pas.guibase.TGUIElement.SetSize.call(this,AX,AY,AWidth,AHeight);
+      this.fLabel.SetFontSize(this.fHeight);
+      this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
+    };
+    this.Create$3 = function (AItem, AAnimation) {
+      pas.guibase.TGUIElement.Create$2.call(this);
+      this.fItem = AItem;
+      this.fItems = 0;
+      this.fAnimation = AAnimation;
+      this.fLabel = $mod.TGUILabel.$create("Create$3");
+      this.AddChild(this.fLabel);
+      this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
+      this.fLabel.SetCaption("0");
+      return this;
+    };
+  });
+  rtl.createClass(this,"TGUIInventory",pas.guibase.TGUIElement,function () {
+    this.$init = function () {
+      pas.guibase.TGUIElement.$init.call(this);
+      this.fItemHeight = 0;
+      this.fItems = null;
+      this.fItemWidth = 0;
+    };
+    this.$final = function () {
+      this.fItems = undefined;
+      pas.guibase.TGUIElement.$final.call(this);
+    };
+    this.RepackItems = function () {
+      var x = 0;
+      var y = 0;
+      var el = undefined;
+      var e = null;
+      x = 0;
+      y = 0;
+      for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+        el = $in[$l];
+        e = rtl.getObject(el);
+        e.SetSize(x,y,this.fItemWidth,this.fItemHeight);
+        x = x + this.fItemWidth;
+        if (((x + this.fItemWidth) - 1) >= this.fWidth) {
+          y += this.fItemHeight;
+          x = 0;
+        };
+      };
+    };
+    this.Create$3 = function () {
+      pas.guibase.TGUIElement.Create$2.call(this);
+      this.fItems = new Array();
+      this.fItemHeight = 35;
+      this.fItemWidth = 70;
+      return this;
+    };
+    this.AddElements = function (AItem, AAnimation, ACount) {
+      var el = undefined;
+      var e = null;
+      for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+        el = $in[$l];
+        e = rtl.getObject(el);
+        if ((e.fItem === AItem) && (e.fAnimation === AAnimation)) {
+          e.SetItems(e.fItems + ACount);
+          return;
+        };
+      };
+      e = $mod.TGUIInventoryItem.$create("Create$3",[AItem,AAnimation]);
+      e.SetItems(ACount);
+      this.fItems.push(e);
+      this.AddChild(e);
+      this.RepackItems();
     };
   });
   $mod.$implcode = function () {
@@ -4501,6 +4649,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     this.$init = function () {
       pas.GameBase.TGameElement.$init.call(this);
       this.fBaseDamage = 0.0;
+      this.fGold = 0;
       this.fHP = 0.0;
       this.fTarget = pas.GameMath.TPVector.$new();
       this.fName = "";
@@ -4620,6 +4769,54 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
   "use strict";
   var $mod = this;
   var $impl = $mod.$impl;
+  rtl.createClass(this,"TLDSectorButton",pas.GameBase.TGameElement,function () {
+    this.$init = function () {
+      pas.GameBase.TGameElement.$init.call(this);
+      this.fAvail = false;
+      this.fQuad = rtl.arraySetLength(null,pas.GameMath.TPVector,4);
+      this.fSprite = null;
+      this.fDirection = 0;
+    };
+    this.$final = function () {
+      this.fQuad = undefined;
+      this.fSprite = undefined;
+      pas.GameBase.TGameElement.$final.call(this);
+    };
+    this.Render = function (GL, AViewport) {
+      var fAnim = "";
+      pas.GameBase.TGameElement.Render.call(this,GL,AViewport);
+      fAnim = "idle";
+      if (!this.fAvail) fAnim = "locked";
+      pas.GameSprite.RenderFrame(GL,AViewport,this.fQuad,this.fSprite.GetFrame(fAnim,0));
+    };
+    this.Create$2 = function (ADirection) {
+      var tx = null;
+      var t2 = null;
+      pas.GameBase.TGameElement.Create$1.call(this,true);
+      this.fAvail = true;
+      this.fDirection = ADirection;
+      this.fSprite = pas.GameSprite.GetSprite("sector_button");
+      this.fQuad = $impl.MakeSecButtonQuad(2 * pas.ldconfig.Config.SectorSize,(2 / 4) * pas.ldconfig.Config.SectorSize);
+      tx = pas.GameMath.TPMatrix.$create("CreateTranslation",[-1.5 * pas.ldconfig.Config.SectorSize,-1.5 * pas.ldconfig.Config.SectorSize,0]).Transpose();
+      tx.TransformInplace({p: this, get: function () {
+          return this.p.fQuad;
+        }, set: function (v) {
+          this.p.fQuad = v;
+        }});
+      t2 = pas.GameMath.TPMatrix.$create("CreateRotationZ",[(-ADirection * Math.PI) / 2]).Transpose();
+      t2.TransformInplace({p: this, get: function () {
+          return this.p.fQuad;
+        }, set: function (v) {
+          this.p.fQuad = v;
+        }});
+      tx.GetInverse().TransformInplace({p: this, get: function () {
+          return this.p.fQuad;
+        }, set: function (v) {
+          this.p.fQuad = v;
+        }});
+      return this;
+    };
+  });
   rtl.createClass(this,"TLDMapTileInfo",pas.System.TObject,function () {
     this.$init = function () {
       pas.System.TObject.$init.call(this);
@@ -4697,6 +4894,8 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       pas.System.TObject.$init.call(this);
       this.fID = 0;
       this.fTiles = [];
+      this.fX = 0;
+      this.fY = 0;
     };
     this.$final = function () {
       this.fTiles = undefined;
@@ -4715,11 +4914,13 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
         };
       };
     };
-    this.Create$1 = function () {
+    this.Create$1 = function (AX, AY) {
       var i = 0;
       var i2 = 0;
       var sectorTiles = 0;
       pas.System.TObject.Create.call(this);
+      this.fX = AX;
+      this.fY = AY;
       this.fID = $impl.Sectors;
       $impl.Sectors += 1;
       sectorTiles = pas.ldconfig.Config.SectorTiles;
@@ -4783,8 +4984,15 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       var Result = null;
       var key = "";
       key = pas.SysUtils.IntToStr(AX) + "x" + pas.SysUtils.IntToStr(AY);
-      if (!this.fSectors.has(key)) this.fSectors.set(key,$mod.TLDSector.$create("Create$1"));
+      if (!this.fSectors.has(key)) this.fSectors.set(key,$mod.TLDSector.$create("Create$1",[AX,AY]));
       Result = rtl.getObject(this.fSectors.get(key));
+      return Result;
+    };
+    this.HasSector = function (AX, AY) {
+      var Result = false;
+      var key = "";
+      key = pas.SysUtils.IntToStr(AX) + "x" + pas.SysUtils.IntToStr(AY);
+      Result = this.fSectors.has(key);
       return Result;
     };
     this.SetCurrentSector = function (ASector) {
@@ -4820,6 +5028,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
         };
       };
       pas.ldactor.ShowCharacters(this.fCurrentSector.fID);
+      $mod.UpdateNeighbourSectors();
     };
   });
   rtl.createClass(this,"TPlant",pas.GameBase.TGameElement,function () {
@@ -4955,14 +5164,35 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     };
   });
   this.Map = null;
+  this.SectorArrows = rtl.arraySetLength(null,null,4);
   this.LoadTiles = function (AInfo) {
     $impl.TileInfo = $mod.TLDMapTiles.$create("Create$1",[AInfo]);
+  };
+  this.UpdateNeighbourSectors = function () {
+    var x = 0;
+    var y = 0;
+    x = $mod.Map.fCurrentSector.fX;
+    y = $mod.Map.fCurrentSector.fY;
+    $mod.SectorArrows[0].fAvail = $mod.Map.HasSector(x,y - 1);
+    $mod.SectorArrows[1].fAvail = $mod.Map.HasSector(x + 1,y);
+    $mod.SectorArrows[2].fAvail = $mod.Map.HasSector(x,y + 1);
+    $mod.SectorArrows[3].fAvail = $mod.Map.HasSector(x - 1,y);
   };
   $mod.$implcode = function () {
     $impl.Sectors = 0;
     $impl.TileInfo = null;
     $impl.Behaviors = null;
     $impl.TileComp = null;
+    $impl.MakeSecButtonQuad = function (Width, Height) {
+      var Result = rtl.arraySetLength(null,pas.GameMath.TPVector,4);
+      var SectorSize = 0;
+      SectorSize = pas.ldconfig.Config.SectorSize;
+      Result[3].$assign(pas.GameMath.TPVector.New((1.5 * SectorSize) + (Width / 2),-20 - (0 * Height),0));
+      Result[0].$assign(pas.GameMath.TPVector.New((1.5 * SectorSize) + (Width / 2),-20 - (1 * Height),0));
+      Result[1].$assign(pas.GameMath.TPVector.New((1.5 * SectorSize) - (Width / 2),-20 - (1 * Height),0));
+      Result[2].$assign(pas.GameMath.TPVector.New((1.5 * SectorSize) - (Width / 2),-20 - (0 * Height),0));
+      return Result;
+    };
     $impl.MakeTileQuad = function (X, Y) {
       var Result = rtl.arraySetLength(null,pas.GameMath.TPVector,4);
       var SectorSize = 0;
@@ -5089,6 +5319,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGUI = null;
       this.MainGuiPanel = null;
       this.InvPanel = null;
+      this.InvGoldLabel = null;
+      this.Inventory = null;
     };
     this.$final = function () {
       this.StartSector = undefined;
@@ -5096,6 +5328,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGUI = undefined;
       this.MainGuiPanel = undefined;
       this.InvPanel = undefined;
+      this.InvGoldLabel = undefined;
+      this.Inventory = undefined;
       pas.GameBase.TGameBase.$final.call(this);
     };
     this.ScreenToWorld = function (APoint) {
@@ -5173,14 +5407,31 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGuiPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(1,0,0,1.0));
       this.MainGUI.AddChild(this.MainGuiPanel);
       this.InvPanel = pas.guictrls.TGUIPanel.$create("Create$3");
-      this.InvPanel.SetSize(0,0,300,200);
-      this.InvPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(0,1,0,1.0));
+      this.InvPanel.SetSize(0,2,350,200 - 2);
+      this.InvPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(0.4,0.4,0.4,1.0));
       this.MainGuiPanel.AddChild(this.InvPanel);
       t = pas.guictrls.TGUILabel.$create("Create$3");
       t.SetCaption("Inventory");
-      t.SetSize(0,0,350,0);
+      t.SetSize(0,0,350,30);
       t.SetFontSize(30);
       this.InvPanel.AddChild(t);
+      this.InvGoldLabel = pas.guictrls.TGUILabel.$create("Create$3");
+      this.InvGoldLabel.SetCaption("Gold: 0");
+      this.InvGoldLabel.SetSize(0,30,350,30);
+      this.InvGoldLabel.SetFontSize(30);
+      this.InvPanel.AddChild(this.InvGoldLabel);
+      this.Inventory = pas.guictrls.TGUIInventory.$create("Create$3");
+      this.Inventory.fItemWidth = rtl.trunc(350 / 2);
+      this.Inventory.SetSize(0,60,350,200 - 60);
+      this.InvPanel.AddChild(this.Inventory);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage0",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage1",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage2",10);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("barley"),"stage3",10);
+    };
+    this.Update = function (ATimeMS) {
+      pas.GameBase.TGameBase.Update.call(this,ATimeMS);
+      this.InvGoldLabel.SetCaption(pas.SysUtils.Format("Gold: %d",pas.System.VarRecs(0,pas.ldactor.Player.fGold)));
     };
     this.GetElements = function () {
       var Result = null;
@@ -5225,19 +5476,23 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/guard.png");
       pas.resources.TResources.AddImage("assets\/player.png");
       pas.resources.TResources.AddImage("assets\/bld.png");
+      pas.resources.TResources.AddImage("assets\/misc.png");
       pas.resources.TResources.AddString("assets\/tiles.json");
       pas.resources.TResources.AddString("assets\/sprites-plants.json");
       pas.resources.TResources.AddString("assets\/sprites-characters.json");
       pas.resources.TResources.AddString("assets\/sprites-buildings.json");
+      pas.resources.TResources.AddString("assets\/sprites-misc.json");
       pas.resources.TResources.AddString("assets\/config.json");
       pas.resources.TResources.AddString("assets\/map.json");
     };
     this.AfterLoad = function () {
+      var i = 0;
       pas.GameBase.TGameBase.AfterLoad.call(this);
       pas.ldconfig.LoadConfig(pas.resources.TResources.AddString("assets\/config.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-plants.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-characters.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-buildings.json").fString);
+      pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-misc.json").fString);
       pas.ldmap.LoadTiles(pas.resources.TResources.AddString("assets\/tiles.json").fString);
       pas.GameFont.LoadFont("sans",pas.resources.TResources.AddString("assets\/custom-msdf.json").fString,pas.resources.TResources.AddImage("assets\/custom.png"));
       this.AddElement(pas.ECS.EntitySystem);
@@ -5246,13 +5501,14 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGUI.Resize(this.fWidth,this.fHeight);
       this.AddElement(this.MainGUI);
       this.MakeGUI();
+      for (i = 0; i <= 3; i++) pas.ldmap.SectorArrows[i] = this.AddElement(pas.ldmap.TLDSectorButton.$create("Create$2",[i]));
       this.LoadMap(pas.resources.TResources.AddString("assets\/map.json").fString);
       pas.ldmap.Map.SetCurrentSector(this.StartSector);
     };
     this.AfterResize = function () {
       pas.GameBase.TGameBase.AfterResize.call(this);
       this.Viewport.Projection = pas.GameMath.TPMatrix.$create("Ortho",[this.fWidth / 4,-this.fWidth / 4,this.fHeight / 4,-this.fHeight / 4,-10000,10000]);
-      this.Viewport.ModelView = pas.GameMath.TPMatrix.$create("LookAt",[pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New((450 / 2) - 20,(450 / 2) - 60,0)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(300,-300,500)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(0,0,-1))]);
+      this.Viewport.ModelView = pas.GameMath.TPMatrix.$create("LookAt",[pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(450 / 2,450 / 2,0)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(300,-300,500)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(0,0,-1))]);
       if (this.MainGUI !== null) {
         this.MainGUI.Resize(this.fWidth,this.fHeight);
         this.MainGuiPanel.SetSize(0,this.fHeight - 200,this.fWidth,200);

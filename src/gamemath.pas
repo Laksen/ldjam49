@@ -462,6 +462,7 @@ end;
 procedure TPMatrix.TransformInplace(var AVectors: array of TPVector);
 var
   i: SizeInt;
+  x, y, z: Double;
 begin
   if fIsIdentity then
     exit;
@@ -476,9 +477,13 @@ begin
   else
     for i:=low(AVectors) to high(AVectors) do
     begin
-      AVectors[i].X:=AVectors[i].X*V[0]+AVectors[i].Y*V[1]+AVectors[i].Z*V[2]+V[3];
-      AVectors[i].Y:=AVectors[i].X*V[4]+AVectors[i].Y*V[5]+AVectors[i].Z*V[6]+V[7];
-      AVectors[i].Z:=AVectors[i].X*V[8]+AVectors[i].Y*V[9]+AVectors[i].Z*V[10]+V[11];
+      x:=AVectors[i].X;
+      y:=AVectors[i].y;
+      z:=AVectors[i].z;
+
+      AVectors[i].X:=X*V[0]+Y*V[1]+Z*V[2]+V[3];
+      AVectors[i].Y:=X*V[4]+Y*V[5]+Z*V[6]+V[7];
+      AVectors[i].Z:=X*V[8]+Y*V[9]+Z*V[10]+V[11];
     end;
 end;
 

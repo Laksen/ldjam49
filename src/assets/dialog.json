@@ -31,6 +31,17 @@
             }
         ]
     },
+    "cauldron": {
+        "start": "Hmm, what should we brew today?",
+        "entries": [
+            {
+                "option": "Pilsner",
+                "trigger": "brew_pilsner",
+                "grain": 10,
+                "hops": 3
+            }
+        ]
+    },
     "king": {
         "start": "What is it then, peasant?",
         "entries": [

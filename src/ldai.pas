@@ -40,6 +40,7 @@ var
   FarmerBehavior: TFarmerBehavior;
   GuardBehavior:  TGuardBehavior;
   KingBehavior:   TKingBehavior;
+
   PlayerBehavior: TPlayerBehavior;
 
 implementation

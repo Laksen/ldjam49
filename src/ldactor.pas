@@ -25,6 +25,7 @@ type
   TLDCharacter = class(TGameElement)
   private
     fBaseDamage: double;
+    fGold: longint;
     fHP: double;
     fTarget: TPVector;
     fName: String;
@@ -41,6 +42,8 @@ type
   public
     constructor Create(const AName: string; ASprite: TGameSprite; ASector,AX,AY: integer);
 
+    procedure GoldTransact(AGoldDiff: longint);
+
     property Name: string read fName;
     property Animation: string read fAnimation write fAnimation;
     property Sector: integer read fSector;
@@ -51,9 +54,10 @@ type
     property Speed: double read fSpeed write fSpeed;
     property BaseDamage: double read fBaseDamage write fBaseDamage;
 
+    property Gold: longint read fGold write fGold;
+
     // Movement
     property Target: TPVector read fTarget write fTarget;
-
   end;
 
 var
@@ -196,6 +200,11 @@ begin
   fSprite:=ASprite;
   fSector:=ASector;
   Position:=TPVector.New(ax,ay);
+end;
+
+procedure TLDCharacter.GoldTransact(AGoldDiff: longint);
+begin
+  fGold:=fGold+AGoldDiff;
 end;
 
 initialization
