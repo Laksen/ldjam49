@@ -10,5 +10,27 @@
             "castle": [{ "frame": 2, "time": 1.0 }],
             "well": [{ "frame": 3, "time": 1.0 }]
         }
+    },
+    {
+        "name": "well",
+        "texture": "assets/well.png",
+        "tile-width": 256,
+        "tile-height": 256,
+        "animations": {
+            "idle": [{"frame": 0, "time": 1.0}]
+        }
+    },
+    {
+        "name": "castle",
+        "texture": "assets/castle.png",
+        "tile-width": 256,
+        "tile-height": 256,
+        "animations": {
+            "idle": [
+                {"frame": 0, "time": 0.25},
+                {"frame": 1, "time": 0.25},
+                {"frame": 2, "time": 0.25}
+            ]
+        }
     }
 ]

@@ -35,16 +35,22 @@
         },
         "castle":
         {
-            "sprite": "buildings",
-            "animation": "castle",
+            "sprite": "grass",
+            "animation": "idle",
             "behavior": [],
-            "walkable": false
+            "walkable": false,
+            "billboards": [
+                { "sprite": "castle", "animation": "idle", "width": 80, "height": 80 }
+            ]
         },
         "well":
         {
-            "sprite": "buildings",
-            "animation": "well",
-            "behavior": []
+            "sprite": "grass",
+            "animation": "idle",
+            "behavior": [],
+            "billboards": [
+                { "sprite": "well", "animation": "idle", "width": 40, "height": 40 }
+            ]
         }
     }
 }

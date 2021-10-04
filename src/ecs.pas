@@ -17,11 +17,13 @@ type
   TComponentData = TJSMap;
 
   TECEntity = class
-  private
+  private    
+    fKey: String;
     fIndex: longint;
     fSystem: TECSystem;
     fComponentData: array of TComponentData;
     function GetData(AComponent: longint): TComponentData;
+    function GetKey: string;
   protected
     Components: TJSArray;
     property Data[AComponent: longint]: TComponentData read GetData;
@@ -33,6 +35,8 @@ type
     procedure RemoveComponent(AComponent: TECComponent);
 
     function HasComponent(AComponent: TECComponent): boolean;
+
+    property Key: string read GetKey;
   end;
 
   TECComponent = class       
@@ -114,6 +118,13 @@ end;
 function TECEntity.GetData(AComponent: longint): TComponentData;
 begin
   result:=fComponentData[AComponent];
+end;
+
+function TECEntity.GetKey: string;
+begin
+  if fKey='' then
+    fKey:=inttostr(fIndex);
+  result:=fKey;
 end;
 
 constructor TECEntity.Create(ASystem: TECSystem);

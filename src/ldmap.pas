@@ -29,6 +29,7 @@ type
   TLDMapTileInfo = class
   private
     fAnimation: string;
+    fBillboards: TJSArray;
     fSprite: TGameSprite;
     fBehaviors: TJSArray;
     fWalkable: boolean;
@@ -39,6 +40,8 @@ type
     property Sprite: TGameSprite read fSprite;
     property Behaviors: TJSArray read fBehaviors;
     property Walkable: boolean read fWalkable;
+
+    property Billboards: TJSArray read fBillboards;
   end;
 
   TLDMapTiles = class
@@ -122,12 +125,37 @@ type
     property Ready: boolean read GetReady;
   end;
 
+  TBillboard = class(TGameElement)
+  private
+    fLastTime,fTime,fTimeOffset: Double;
+    fSprite: TGameSprite;
+    fAnimation: string;
+    fWidth, fHeight: double;
+  protected
+    procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+    procedure Update(AGame: TGameBase; ATimeMS: double); override;
+  public
+    constructor Create(AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
+  end;
+
   TTileComponent = class(TECComponent)
   protected
     function GetName: string; override;
+
+    procedure Init(AEntity: TECEntity); override;
+    procedure DeInit(AEntity: TECEntity); override;
   public
     procedure SetInfo(ATile: TLDSectorTile; ASector, AX,AY: integer);
     procedure GetInfo(ATile: TLDSectorTile; var ASector, AX,AY: integer);
+
+    procedure AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double);
+
+    procedure SetBillboardsVisible(AEntity: TECEntity; AVisible: boolean);
+  end;
+
+  TBillboardComponent = class(TECComponent)
+  private
+  public
   end;
 
   THarvestable = class(TECComponent)
@@ -197,6 +225,39 @@ begin
   SectorArrows[1].Avail:=map.HasSector(x+1,y);
   SectorArrows[2].Avail:=map.HasSector(x,  y+1);
   SectorArrows[3].Avail:=map.HasSector(x-1,y);
+end;   
+
+function GetGrowthRect(ACenter: TPVector; AWidth, AHeight: double): TGameQuad;
+begin
+  result[0]:=ACenter.Add(TPVector.new(-AWidth/2, 0, AHeight));
+  result[1]:=ACenter.Add(TPVector.new( AWidth/2, 0, AHeight));
+  result[2]:=ACenter.Add(TPVector.new( AWidth/2, 0, 0));
+  result[3]:=ACenter.Add(TPVector.new(-AWidth/2, 0, 0));
+end;
+
+procedure TBillboard.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+var
+  frame: TGameFrame;
+begin
+  frame:=fSprite.GetFrame(fAnimation, fTime+fTimeOffset);
+
+  RenderFrame(gl, AViewport, GetGrowthRect(Position, fWidth, fHeight), frame);
+end;
+
+procedure TBillboard.Update(AGame: TGameBase; ATimeMS: double);
+begin
+  fTime:=ATimeMS / 1000;
+end;
+
+constructor TBillboard.Create(AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
+begin
+  inherited Create;
+  fTimeOffset:=Random;
+  Position:=TPVector.New(ax,ay);
+  fSprite:=ASprite;
+  fAnimation:=AAnimation;
+  fWidth:=AWidth;
+  fHeight:=AHeight;
 end;
 
 procedure TLDSectorButton.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -248,6 +309,22 @@ begin
   result:='tile';
 end;
 
+procedure TTileComponent.Init(AEntity: TECEntity);
+begin
+  inherited Init(AEntity);
+  GetData(AEntity).&set('billboards', TJSArray.new);
+end;
+
+procedure TTileComponent.DeInit(AEntity: TECEntity);
+var
+  bbs: TJSArray;
+  o: JSValue;
+begin
+  bbs:=TJSArray(GetData(AEntity).get('billboards'));
+  for o in bbs do
+    Game.RemoveElement(TBillboard(o), true);
+end;
+
 procedure TTileComponent.SetInfo(ATile: TLDSectorTile; ASector, AX, AY: integer);
 var
   data: TJSMap;
@@ -266,6 +343,34 @@ begin
   ASector:=integer(data.get('sector'));
   ax:=integer(data.get('x'));
   ay:=integer(data.get('y'));
+end;
+
+procedure TTileComponent.AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double);
+var
+  bbs: TJSArray;
+  s, x, y: integer;
+  SectorSize: LongInt;
+  bb: TBillboard;
+begin
+  bbs:=TJSArray(GetData(ATile).get('billboards'));
+
+  GetInfo(ATile, s,x,y);
+
+  SectorSize:=Config.SectorSize;
+  bb:=TBillboard.Create((x+0.5)*SectorSize,(y+0.5)*sectorsize, awidth, aheight, ASprite, AAnimation);
+  Game.AddElement(bb).Visible:=false;
+
+  bbs.push(bb);
+end;
+
+procedure TTileComponent.SetBillboardsVisible(AEntity: TECEntity; AVisible: boolean);
+var
+  bbs: TJSArray;
+  o: JSValue;
+begin
+  bbs:=TJSArray(GetData(AEntity).get('billboards'));
+  for o in bbs do
+    TBillboard(o).Visible:=AVisible;
 end;
 
 procedure TLDMap.Update(AGame: TGameBase; ATimeMS: double);
@@ -357,6 +462,8 @@ begin
 
         if tile.HasComponent(hops) then  hops.SetPlantsVisible(tile, false);
         if tile.HasComponent(field) then field.SetPlantsVisible(tile, false);
+
+        TileComp.SetBillboardsVisible(tile, false);
       end;
   end;
 
@@ -372,6 +479,8 @@ begin
 
       if tile.HasComponent(hops) then  hops.SetPlantsVisible(tile, true);
       if tile.HasComponent(field) then field.SetPlantsVisible(tile, true);
+
+      TileComp.SetBillboardsVisible(tile, true);
     end;
 
   ShowCharacters(fCurrentSector.ID);
@@ -429,9 +538,23 @@ begin
 end;
 
 procedure TLDSector.SetTile(AX, AY: longint; ATileType: TLDMapTileInfo);
+var
+  bb: JSValue;
+  width, height: Double;
+  animation, sp: String;
 begin
   fTiles[AX][AY].Free;
   fTiles[AX][AY]:=TLDSectorTile.Create(EntitySystem, ATileType, id,AX,ay);
+
+  for bb in ATileType.Billboards do
+  begin
+    sp:=string(TJSObject(bb)['sprite']);
+    animation:=string(TJSObject(bb)['animation']);
+    width:=double(TJSObject(bb)['width']);
+    height:=double(TJSObject(bb)['height']);
+
+    TileComp.AddBillboard(fTiles[ax][ay], GetSprite(sp), animation, width,height);
+  end;
 end;
 
 procedure TLDSector.SetTile(AX, AY: longint; const AName: string);
@@ -446,6 +569,8 @@ begin
 
   fSprite:=GetSprite(string(AInfo['sprite']));
   fAnimation:=string(AInfo['animation']);
+  fBillboards:=TJSArray(AInfo['billboards']);
+  if fBillboards=Undefined then fBillboards:=TJSArray.new;
 end;
 
 function TLDMapTiles.GetTile(const AName: string): TLDMapTileInfo;
@@ -463,14 +588,6 @@ begin
 
   for el in TJSObject.keys(TJSObject(fInfo['tiles'])) do
     fMap.&set(el, TLDMapTileInfo.Create(TJSObject(TJSObject(fInfo['tiles'])[el])));
-end;
-
-function GetGrowthRect(ACenter: TPVector; AWidth, AHeight: double): TGameQuad;
-begin
-  result[0]:=ACenter.Add(TPVector.new(-AWidth/2, 0, AHeight));
-  result[1]:=ACenter.Add(TPVector.new( AWidth/2, 0, AHeight));
-  result[2]:=ACenter.Add(TPVector.new( AWidth/2, 0, 0));
-  result[3]:=ACenter.Add(TPVector.new(-AWidth/2, 0, 0));
 end;
 
 function THops.GetName: string;
@@ -560,7 +677,6 @@ var
   i, sec, y, x: Integer;
 begin
   inherited Init(AEntity);
-
   plants:=TJSArray.new;
 
   TileComp.GetInfo(TLDSectorTile(AEntity), sec, x, y);
