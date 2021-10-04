@@ -5458,6 +5458,10 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-hops"),"idle",10);
       this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-barley"),"idle",10);
       this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-scythe"),"idle",1);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-reg"),"idle",1);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-med"),"idle",1);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-strong"),"idle",1337);
+      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-suicide"),"idle",1);
       ActionPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       ActionPanel.SetSize(352,2,350,200 - 2);
       ActionPanel.fBackGround.$assign(PanelBG);
@@ -5518,6 +5522,10 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/Icons\/IconHops.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconBarley.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconScythe.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBeerREG.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBeerMED.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBeerSTRONG.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBeerSuicide.png");
       pas.resources.TResources.AddImage("assets\/bld.png");
       pas.resources.TResources.AddImage("assets\/misc.png");
       pas.resources.TResources.AddString("assets\/tiles.json");

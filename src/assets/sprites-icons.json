@@ -25,5 +25,41 @@
         "animations": {
             "idle": [{ "frame": 0, "time": 1.0 }]
         }
+    },
+    {
+        "name": "icon-beer-reg",
+        "texture": "assets/Icons/IconBeerREG.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-beer-med",
+        "texture": "assets/Icons/IconBeerMED.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-beer-strong",
+        "texture": "assets/Icons/IconBeerSTRONG.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-beer-suicide",
+        "texture": "assets/Icons/IconBeerSuicide.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
     }
 ]
