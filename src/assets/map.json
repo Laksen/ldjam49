@@ -39,6 +39,11 @@
             "tile": "well",
             "items": ["icon-bucket"]
         },
+
+        "7": {
+            "spawn": ["player"]
+        },
+
         "8": {
             "tile": "fireplace",
             "items": ["icon-scythe"]
@@ -79,10 +84,6 @@
         "2": {
         
             "spawn": ["farmer", "farmer"]
-        },
-
-        "0": {
-            "spawn": ["player"]
         },
 
         "6": {
