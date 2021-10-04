@@ -6016,7 +6016,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.Inventory = null;
       this.Actions = rtl.arraySetLength(null,null,6);
       this.fCurrentTrack = 0;
-      this.Tracks = rtl.arraySetLength(null,null,1);
+      this.Tracks = rtl.arraySetLength(null,null,2);
+      this.fCurrentMusic = null;
     };
     this.$final = function () {
       this.StartSector = undefined;
@@ -6036,6 +6037,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.Inventory = undefined;
       this.Actions = undefined;
       this.Tracks = undefined;
+      this.fCurrentMusic = undefined;
       pas.GameBase.TGameBase.$final.call(this);
     };
     this.SetAction = function (ATarget, APosition) {
@@ -6058,8 +6060,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       return Result;
     };
     this.ClickDialog = function (AIndex) {
+      var $Self = this;
       var curr = null;
       var selected = null;
+      function Consume(agrain, ahops) {
+        $Self.Inventory.RemoveElements(pas.GameSprite.GetSprite("icon-barley"),agrain);
+        $Self.Inventory.RemoveElements(pas.GameSprite.GetSprite("icon-hops"),ahops);
+      };
       curr = this.DialogStack[this.DialogStack.length - 1];
       if (AIndex === -1) {
         this.DialogStack.splice(this.DialogStack.length - 1);
@@ -6077,9 +6084,16 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           if ($tmp === "buy_harvest") {}
           else if ($tmp === "buy_beer") {}
           else if ($tmp === "give_beer") {}
-          else if ($tmp === "brew_pilsner") {}
-          else if ($tmp === "brew_ale") {}
-          else if ($tmp === "brew_porter") ;
+          else if ($tmp === "brew_pilsner") {
+            Consume(10,3);
+            this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-reg"),2);
+          } else if ($tmp === "brew_ale") {
+            Consume(15,4);
+            this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-med"),2);
+          } else if ($tmp === "brew_porter") {
+            Consume(30,10);
+            this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-strong"),2);
+          };
         } else pas.System.Writeln("Dead end?!");
       };
     };
@@ -6475,12 +6489,15 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.SetCurrentAction(0);
     };
     this.MusicEnded = function (ASrc) {
-      this.fCurrentTrack = (this.fCurrentTrack + 1) % 1;
-      this.fAudio.Play(this.Tracks[this.fCurrentTrack],0.4,false).fOnEnd = rtl.createCallback(this,"MusicEnded");
+      this.fCurrentMusic.FadeOut($mod.fTime,1);
+      this.fCurrentTrack = (this.fCurrentTrack + 1) % 2;
+      this.fCurrentMusic = this.fAudio.Play(this.Tracks[this.fCurrentTrack],0.4,false);
+      this.fCurrentMusic.fOnEnd = rtl.createCallback(this,"MusicEnded");
     };
     this.StartMusic = function () {
       this.fCurrentTrack = 0;
-      this.fAudio.Play(this.Tracks[0],0.4,false).fOnEnd = rtl.createCallback(this,"MusicEnded");
+      this.fCurrentMusic = this.fAudio.Play(this.Tracks[0],0.4,false);
+      this.fCurrentMusic.fOnEnd = rtl.createCallback(this,"MusicEnded");
     };
     this.Update = function (ATimeMS) {
       pas.GameBase.TGameBase.Update.call(this,ATimeMS);
@@ -6513,7 +6530,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         this.SetCurrentAction(4)}
        else if ($tmp === "Digit6") {
         this.SetCurrentAction(5)}
-       else if ($tmp === "KeyM") this.fAudio.FadeAll($mod.fTime,400);
+       else if ($tmp === "KeyM") {
+        this.fAudio.FadeAll($mod.fTime,400)}
+       else if ($tmp === "KeyN") this.MusicEnded(null);
     };
     this.DoClick = function (AX, AY, AButtons) {
       var p = pas.GameMath.TPVector.$new();
@@ -6602,6 +6621,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddString("assets\/config.json");
       pas.resources.TResources.AddString("assets\/map.json");
       this.Tracks[0] = pas.resources.TResources.AddSound("assets\/Audio\/mus_song1.mp3");
+      this.Tracks[1] = pas.resources.TResources.AddSound("assets\/Audio\/mus_song2.mp3");
       pas.ldsounds.AddSound("rake",pas.resources.TResources.AddSound("assets\/Audio\/proc_rake.m4a"));
       pas.ldsounds.AddSound("drink",pas.resources.TResources.AddSound("assets\/Audio\/proc_drinkaah.m4a"));
       pas.resources.TResources.AddSound("assets\/Audio\/proc_burp.m4a");

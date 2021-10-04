@@ -110,8 +110,8 @@
             {
                 "option": "Porter",
                 "trigger": "brew_porter",
-                "grain": 25,
-                "hops": 5
+                "grain": 30,
+                "hops": 10
             }
         ]
     },

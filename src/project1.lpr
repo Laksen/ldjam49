@@ -97,10 +97,10 @@ type
     procedure LoadMap(const AStr: string);
 
     procedure MakeGUI;
-
   private
     fCurrentTrack: longint;
-    Tracks: array[0..0] of TJSHTMLAudioElement;
+    Tracks: array[0..1] of TJSHTMLAudioElement;
+    fCurrentMusic: TGameAudioSource;
 
     procedure MusicEnded(ASrc: TGameAudioSource);
     procedure StartMusic;
@@ -164,6 +164,13 @@ end;
 procedure TLD49Game.ClickDialog(AIndex: longint);
 var
   curr, selected: TJSObject;
+
+  procedure Consume(agrain, ahops: integer);
+  begin
+    Inventory.RemoveElements(getsprite('icon-barley'), agrain);
+    Inventory.RemoveElements(getsprite('icon-hops'), ahops);
+  end;
+
 begin
   curr:=TJSObject(DialogStack[DialogStack.Length-1]);
 
@@ -196,9 +203,21 @@ begin
         'buy_beer':;
         'give_beer':;
 
-        'brew_pilsner': ;
-        'brew_ale': ;
-        'brew_porter': ;
+        'brew_pilsner':
+          begin
+            Consume(10, 3);
+            Inventory.AddElements(GetSprite('icon-beer-reg'), 2);
+          end;
+        'brew_ale':
+          begin
+            Consume(15, 4);
+            Inventory.AddElements(GetSprite('icon-beer-med'), 2);
+          end;
+        'brew_porter':
+          begin
+            Consume(30, 10);
+            Inventory.AddElements(GetSprite('icon-beer-strong'), 2);
+          end;
       end;
     end
     else
@@ -741,20 +760,25 @@ begin
       SetCurrentAction(aMove);
 end;
 
+var
+  fTime: Double;
+
 procedure TLD49Game.MusicEnded(ASrc: TGameAudioSource);
 begin
+  fCurrentMusic.FadeOut(fTime,1);
+
   fCurrentTrack:=(fCurrentTrack+1) mod length(Tracks);
-  Audio.Play(Tracks[fCurrentTrack], 0.4).OnEnd:=@MusicEnded;
+  fCurrentMusic:=Audio.Play(Tracks[fCurrentTrack], 0.4);
+  fCurrentMusic.OnEnd:=@MusicEnded;
 end;
 
 procedure TLD49Game.StartMusic;
 begin
   fCurrentTrack:=0;
-  Audio.Play(Tracks[0], 0.4).OnEnd:=@MusicEnded;
+
+  fCurrentMusic:=Audio.Play(Tracks[0], 0.4);
+  fCurrentMusic.OnEnd:=@MusicEnded;
 end;
-                                            
-var
-  fTime: Double;
 
 procedure TLD49Game.Update(ATimeMS: double);
 begin
@@ -786,6 +810,7 @@ begin
     'Digit6': CurrentAction:=aDrop;
 
     'KeyM': Audio.FadeAll(fTime, 400);
+    'KeyN': MusicEnded(nil);
   end;
 end;
 
@@ -888,8 +913,9 @@ begin
 
   TResources.AddString('assets/map.json');
 
-  // Sounds                                                           
+  // Sounds
   Tracks[0]:=TResources.AddSound('assets/Audio/mus_song1.mp3');
+  Tracks[1]:=TResources.AddSound('assets/Audio/mus_song2.mp3');
 
   AddSound('rake', TResources.AddSound('assets/Audio/proc_rake.m4a'));
   AddSound('drink', TResources.AddSound('assets/Audio/proc_drinkaah.m4a'));
