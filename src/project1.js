@@ -3772,6 +3772,7 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
   rtl.recNewT(this,"TGameFrame",function () {
     this.Image = null;
     this.StartTime = 0.0;
+    this.Last = false;
     this.$new = function () {
       var r = Object.create(this);
       r.Start = pas.GameMath.TPVector.$new();
@@ -3779,13 +3780,14 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
       return r;
     };
     this.$eq = function (b) {
-      return (this.Image === b.Image) && this.Start.$eq(b.Start) && this.Stop.$eq(b.Stop) && (this.StartTime === b.StartTime);
+      return (this.Image === b.Image) && this.Start.$eq(b.Start) && this.Stop.$eq(b.Stop) && (this.StartTime === b.StartTime) && (this.Last === b.Last);
     };
     this.$assign = function (s) {
       this.Image = s.Image;
       this.Start.$assign(s.Start);
       this.Stop.$assign(s.Stop);
       this.StartTime = s.StartTime;
+      this.Last = s.Last;
       return this;
     };
   });
@@ -3807,18 +3809,20 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
       return this;
     };
     this.AddFrame = function (AImage, AStart, AStop, AFrameTime) {
+      if (rtl.length(this.fFrame) > 0) this.fFrame[rtl.length(this.fFrame) - 1].Last = false;
       this.fFrame = rtl.arraySetLength(this.fFrame,$mod.TGameFrame,(rtl.length(this.fFrame) - 1) + 2);
       this.fFrame[rtl.length(this.fFrame) - 1].Image = AImage;
       this.fFrame[rtl.length(this.fFrame) - 1].Start.$assign(AStart.Multiply(pas.GameMath.TPVector.New(1 / AImage.fWidth,1 / AImage.fHeight,0)));
       this.fFrame[rtl.length(this.fFrame) - 1].Stop.$assign(AStop.Multiply(pas.GameMath.TPVector.New(1 / AImage.fWidth,1 / AImage.fHeight,0)));
       this.fFrame[rtl.length(this.fFrame) - 1].StartTime = this.fLooptime;
+      this.fFrame[rtl.length(this.fFrame) - 1].Last = true;
       this.fLooptime = this.fLooptime + AFrameTime;
     };
-    this.GetFrame = function (ATime) {
+    this.GetFrame = function (ATime, ALooping) {
       var Result = $mod.TGameFrame.$new();
       var best = 0;
       var i = 0;
-      ATime = ATime % this.fLooptime;
+      if (ALooping) ATime = ATime % this.fLooptime;
       best = rtl.length(this.fFrame) - 1;
       for (var $l = 0, $end = rtl.length(this.fFrame) - 1; $l <= $end; $l++) {
         i = $l;
@@ -3874,11 +3878,16 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
       };
       return this;
     };
-    this.GetFrame = function (AAnimation, ATime) {
+    this.GetAnimation = function (AAnimation) {
+      var Result = null;
+      Result = rtl.getObject(this.fAnimations.get(AAnimation));
+      return Result;
+    };
+    this.GetFrame = function (AAnimation, ATime, ALooping) {
       var Result = $mod.TGameFrame.$new();
       var anim = null;
       anim = rtl.getObject(this.fAnimations.get(AAnimation));
-      Result.$assign(anim.GetFrame(ATime));
+      Result.$assign(anim.GetFrame(ATime,ALooping));
       return Result;
     };
   });
@@ -4367,7 +4376,7 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.fLabel.SetCaption(pas.SysUtils.IntToStr(AValue));
     };
     this.Render = function (AContext, AViewport) {
-      pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fHeight,this.fHeight),this.fItem.GetFrame(this.fAnimation,0));
+      pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fHeight,this.fHeight),this.fItem.GetFrame(this.fAnimation,0,true));
       pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
     };
     this.SetSize = function (AX, AY, AWidth, AHeight) {
@@ -4458,6 +4467,8 @@ rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],funct
   rtl.createClass(this,"TECEntity",pas.System.TObject,function () {
     this.$init = function () {
       pas.System.TObject.$init.call(this);
+      this.fKey = "";
+      this.fIndex = 0;
       this.fSystem = null;
       this.fComponentData = [];
       this.Components = null;
@@ -4471,6 +4482,12 @@ rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],funct
     this.GetData = function (AComponent) {
       var Result = null;
       Result = this.fComponentData[AComponent];
+      return Result;
+    };
+    this.GetKey = function () {
+      var Result = "";
+      if (this.fKey === "") this.fKey = pas.SysUtils.IntToStr(this.fIndex);
+      Result = this.fKey;
       return Result;
     };
     this.Create$1 = function (ASystem) {
@@ -4592,10 +4609,12 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     this.PlayerAnnoyanceLevel = 0.0;
     this.PlayerAttackRange = 0.0;
     this.KingAnnoyanceLevel = 0.0;
+    this.DamageRange = 0.0;
+    this.DamageAnnoyanceRatio = 0.0;
     this.AnnoyanceCooldown = 0.0;
     this.Characters = null;
     this.$eq = function (b) {
-      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
+      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.DamageRange === b.DamageRange) && (this.DamageAnnoyanceRatio === b.DamageAnnoyanceRatio) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
     };
     this.$assign = function (s) {
       this.SectorTiles = s.SectorTiles;
@@ -4604,6 +4623,8 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
       this.PlayerAnnoyanceLevel = s.PlayerAnnoyanceLevel;
       this.PlayerAttackRange = s.PlayerAttackRange;
       this.KingAnnoyanceLevel = s.KingAnnoyanceLevel;
+      this.DamageRange = s.DamageRange;
+      this.DamageAnnoyanceRatio = s.DamageAnnoyanceRatio;
       this.AnnoyanceCooldown = s.AnnoyanceCooldown;
       this.Characters = s.Characters;
       return this;
@@ -4621,6 +4642,8 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     $mod.Config.PlayerAnnoyanceLevel = $impl.TryGetDouble(fInfo,"PlayerAnnoyanceLevel",2);
     $mod.Config.PlayerAttackRange = $impl.TryGetDouble(fInfo,"PlayerAttackRange",200);
     $mod.Config.KingAnnoyanceLevel = $impl.TryGetDouble(fInfo,"KingAnnoyanceLevel",10);
+    $mod.Config.DamageRange = $impl.TryGetDouble(fInfo,"DamageRange",200);
+    $mod.Config.DamageAnnoyanceRatio = $impl.TryGetDouble(fInfo,"DamageAnnoyanceRatio",1);
     $mod.Config.AnnoyanceCooldown = $impl.TryGetDouble(fInfo,"AnnoyanceCooldown",0.9);
     $mod.Config.Characters = new Map();
     obj = fInfo["Characters"];
@@ -4668,6 +4691,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
   rtl.createClass(this,"TLDCharacter",pas.GameBase.TGameElement,function () {
     this.$init = function () {
       pas.GameBase.TGameElement.$init.call(this);
+      this.fAttacking = false;
       this.fBaseDamage = 0.0;
       this.fGold = 0;
       this.fHP = 0.0;
@@ -4679,6 +4703,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
       this.fSprite = null;
       this.fSector = 0;
       this.fTime = 0.0;
+      this.fAttackTime = 0.0;
       this.fLastTime = 0.0;
     };
     this.$final = function () {
@@ -4694,7 +4719,9 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     };
     this.Render = function (GL, AViewport) {
       var frame = pas.GameSprite.TGameFrame.$new();
-      frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime));
+      if (this.fAttacking) {
+        frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime - this.fAttackTime,true))}
+       else frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime,true));
       pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,40),frame);
     };
     this.Update = function (AGame, ATimeMS) {
@@ -4703,17 +4730,29 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
       var fMaxMove = 0.0;
       pas.GameBase.TGameElement.Update.call(this,AGame,ATimeMS);
       this.fTime = ATimeMS / 1000;
-      fMoveDiff.$assign(this.fTarget.Sub(this.fPosition));
-      fMoveLen = fMoveDiff.LengthSqr();
-      fMaxMove = (this.fTime - this.fLastTime) * this.fSpeed;
-      if (pas.System.Sqr$1(fMaxMove) >= fMoveLen) {
-        this.fPosition.$assign(this.fTarget)}
-       else if (fMoveLen > 0) this.fPosition.$assign(this.fPosition.Add(fMoveDiff.Scale(fMaxMove / Math.sqrt(fMoveLen))));
-      this.fPosition.$assign(this.fPosition.Clamp(pas.GameMath.TPVector.New(0,0,0),pas.GameMath.TPVector.New($mod.SectorMax,$mod.SectorMax,0)));
+      if (this.fAttacking) if ((this.fTime - this.fAttackTime) >= this.fSprite.GetAnimation(this.fAnimation).fLooptime) {
+        this.fAttacking = false;
+        this.fAnimation = "idle";
+        $mod.DamageAt(this,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.fBaseDamage);
+      };
+      if (!this.fAttacking) {
+        fMoveDiff.$assign(this.fTarget.Sub(this.fPosition));
+        fMoveLen = fMoveDiff.LengthSqr();
+        fMaxMove = (this.fTime - this.fLastTime) * this.fSpeed;
+        if (pas.System.Sqr$1(fMaxMove) >= fMoveLen) {
+          this.fPosition.$assign(this.fTarget);
+          this.fAnimation = "idle";
+        } else if (fMoveLen > 0) {
+          this.fAnimation = "walk";
+          this.fPosition.$assign(this.fPosition.Add(fMoveDiff.Scale(fMaxMove / Math.sqrt(fMoveLen))));
+        };
+        this.fPosition.$assign(this.fPosition.Clamp(pas.GameMath.TPVector.New(0,0,0),pas.GameMath.TPVector.New($mod.SectorMax,$mod.SectorMax,0)));
+      };
       this.fLastTime = this.fTime;
     };
     this.Create$2 = function (AName, ASprite, ASector, AX, AY) {
       pas.GameBase.TGameElement.Create$1.call(this,false);
+      this.fAttacking = false;
       this.fAnimation = "idle";
       this.fName = AName;
       this.fActor = $mod.TLDActor.$create("Create$2",[pas.ECS.EntitySystem,this]);
@@ -4721,6 +4760,15 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
       this.fSector = ASector;
       this.fPosition.$assign(pas.GameMath.TPVector.New(AX,AY,0));
       return this;
+    };
+    this.TriggerAttack = function () {
+      var Result = false;
+      if (this.fAttacking) return false;
+      this.fAttackTime = this.fTime;
+      this.fAttacking = true;
+      this.fAnimation = "attack";
+      Result = true;
+      return Result;
     };
   });
   this.SectorMax = 0.0;
@@ -4732,6 +4780,21 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     var Result = "";
     Result = "Bob";
     return Result;
+  };
+  this.DamageAt = function (AGiver, ASector, APosition, ADamage) {
+    var sqrDist = 0.0;
+    var ch = null;
+    var o = undefined;
+    sqrDist = pas.System.Sqr$1(pas.ldconfig.Config.DamageRange);
+    ch = $mod.Characters.filter(function (el, idx, arr) {
+      var Result = false;
+      Result = (rtl.getObject(el) !== AGiver) && (rtl.getObject(el).fSector === ASector) && (rtl.getObject(el).fPosition.Sub(AGiver.fPosition).LengthSqr() < sqrDist);
+      return Result;
+    });
+    for (var $in = ch, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+      o = $in[$l];
+      pas.System.Writeln("Dealing damage to ",rtl.getObject(o).fActor.GetKey());
+    };
   };
   this.SpawnCharacter = function (AName, AType, ASector, AX, AY) {
     var Result = null;
@@ -4813,7 +4876,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       pas.GameBase.TGameElement.Render.call(this,GL,AViewport);
       fAnim = "idle";
       if (!this.fAvail) fAnim = "locked";
-      pas.GameSprite.RenderFrame(GL,AViewport,this.fQuad,this.fSprite.GetFrame(fAnim,0));
+      pas.GameSprite.RenderFrame(GL,AViewport,this.fQuad,this.fSprite.GetFrame(fAnim,0,true));
     };
     this.Create$2 = function (ADirection) {
       var tx = null;
@@ -5014,7 +5077,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
         for (var $l1 = 0, $end1 = pas.ldconfig.Config.SectorTiles - 1; $l1 <= $end1; $l1++) {
           i2 = $l1;
           tile = this.fCurrentSector.fTiles[i][i2];
-          pas.GameSprite.RenderFrame(GL,AViewport,$impl.MakeTileQuad(i,i2),tile.fTileType.fSprite.GetFrame(tile.fTileType.fAnimation,tile.fTime));
+          pas.GameSprite.RenderFrame(GL,AViewport,$impl.MakeTileQuad(i,i2),tile.fTileType.fSprite.GetFrame(tile.fTileType.fAnimation,tile.fTime,true));
         };
       };
     };
@@ -5092,7 +5155,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     };
     this.Render = function (GL, AViewport) {
       var frame = pas.GameSprite.TGameFrame.$new();
-      frame.$assign(this.fSprite.GetFrame("stage" + pas.SysUtils.IntToStr(this.fSize),this.fTime + this.fTimeOffset));
+      frame.$assign(this.fSprite.GetFrame("stage" + pas.SysUtils.IntToStr(this.fSize),this.fTime + this.fTimeOffset,true));
       pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetGrowthRect(pas.GameMath.TPVector.$clone(this.fPosition),40,40),frame);
     };
     this.Update = function (AGame, ATimeMS) {
@@ -5108,7 +5171,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       pas.GameBase.TGameElement.Create$1.call(this,false);
       this.fMax = AMaxStage;
       this.fTimeOffset = Math.random();
-      this.fSize = 0;
+      this.fSize = this.fMax;
       this.fPosition.$assign(pas.GameMath.TPVector.New(AX,AY,0));
       this.fSprite = ASprite;
       return this;
@@ -5130,7 +5193,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     };
     this.Render = function (GL, AViewport) {
       var frame = pas.GameSprite.TGameFrame.$new();
-      frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime + this.fTimeOffset));
+      frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime + this.fTimeOffset,true));
       pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetGrowthRect(pas.GameMath.TPVector.$clone(this.fPosition),this.fWidth,this.fHeight),frame);
     };
     this.Update = function (AGame, ATimeMS) {
@@ -5350,28 +5413,38 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
 rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","SysUtils","JS"],function () {
   "use strict";
   var $mod = this;
-  this.TNPCState = {"0": "npcDead", npcDead: 0, "1": "npcAttacking", npcAttacking: 1, "2": "npcIdle", npcIdle: 2};
+  this.TNPCState = {"0": "npcDead", npcDead: 0, "1": "npcAttacking", npcAttacking: 1, "2": "npcAttackMove", npcAttackMove: 2, "3": "npcIdle", npcIdle: 3};
   this.TFarmerState = {"0": "fsFarming", fsFarming: 0};
   rtl.createClass(this,"TNPCBehavior",pas.ECS.TECComponent,function () {
     this.DoAttack = function (AEntity, ATarget) {
       var diff = pas.GameMath.TPVector.$new();
+      var data = null;
+      var dist = 0.0;
+      data = this.GetData(AEntity);
       diff.$assign(ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition));
-      AEntity.fCharacter.fTarget.$assign(ATarget.fCharacter.fPosition);
+      dist = diff.LengthSqr();
+      if (dist < 100) {
+        AEntity.fCharacter.TriggerAttack()}
+       else AEntity.fCharacter.fTarget.$assign(ATarget.fCharacter.fPosition);
     };
     this.Distance = function (AEntity, ATarget) {
       var Result = 0.0;
-      Result = 0;
+      Result = ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition).Length();
       return Result;
     };
     this.Annoyance = function (AEntity, ATarget) {
       var Result = 0.0;
-      Result = 10000;
+      var ann = null;
+      Result = 0;
+      ann = this.GetData(AEntity).get("annoyances");
+      if (ann.has(ATarget.GetKey())) Result = rtl.getNumber(ann.get(ATarget.GetKey()));
       return Result;
     };
     this.WantsToAttack = function (AEntity, ATarget) {
       var Result = false;
       Result = false;
       if (AEntity === ATarget) return false;
+      if (AEntity.fCharacter.fSector !== ATarget.fCharacter.fSector) return false;
       if (ATarget.fCharacter === pas.ldactor.Player) {
         Result = (this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.PlayerAnnoyanceLevel) && (this.Distance(AEntity,ATarget) < pas.ldconfig.Config.PlayerAttackRange)}
        else if (ATarget.fCharacter === pas.ldactor.King) Result = this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.KingAnnoyanceLevel;
@@ -5381,7 +5454,7 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
       var data = null;
       pas.ECS.TECComponent.Init.call(this,AEntity);
       data = this.GetData(AEntity);
-      data.set("state",2);
+      data.set("state",3);
       data.set("annoyances",new Map());
     };
     this.Update = function (AEntity, ADeltaMS, ATimeMS) {
@@ -5404,19 +5477,30 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
         data.set("state",1);
         data.set("target",pas.ldactor.King);
         this.DoAttack(AEntity,pas.ldactor.King.fActor);
-      } else data.set("state",2);
+      } else data.set("state",3);
+    };
+    this.AddAnnoyance = function (AEntity, ATarget, AAnnoyance) {
+      var data = null;
+      var annoyances = null;
+      var k = "";
+      data = this.GetData(AEntity);
+      annoyances = data.get("annoyances");
+      k = ATarget.GetKey();
+      if (annoyances.has(k)) {
+        annoyances.set(k,rtl.getNumber(annoyances.get(k)) + AAnnoyance)}
+       else annoyances.set(k,AAnnoyance);
     };
   });
-  rtl.createClass(this,"TFarmerBehavior",this.TNPCBehavior,function () {
+  rtl.createClass(this,"THomeTileBehavior",this.TNPCBehavior,function () {
     this.UpdateInterval = 3;
     this.Init = function (AEntity) {
       var ent = null;
       $mod.TNPCBehavior.Init.call(this,AEntity);
       ent = this.GetData(AEntity);
-      ent.set("farm-state",0);
-      ent.set("farm-sector",0);
-      ent.set("farm-x",0);
-      ent.set("farm-y",0);
+      ent.set("home-state",0);
+      ent.set("home-sector",0);
+      ent.set("home-x",0);
+      ent.set("home-y",0);
       ent.set("last-update",-100000.0);
     };
     this.Update = function (AEntity, ADeltaMS, ATimeMS) {
@@ -5432,14 +5516,14 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
       char = AEntity.fCharacter;
       $mod.TNPCBehavior.Update.call(this,AEntity,ADeltaMS,ATimeMS);
       npcState = ent.get("state");
-      if (npcState === 2) {
-        state = ent.get("farm-state");
+      if (npcState === 3) {
+        state = ent.get("home-state");
         var $tmp = state;
         if ($tmp === 0) {
           last_update = rtl.getNumber(ent.get("last-update"));
           if ((ATimeMS - last_update) > (3 * 1000)) {
-            x = rtl.getNumber(ent.get("farm-x"));
-            y = rtl.getNumber(ent.get("farm-y"));
+            x = rtl.getNumber(ent.get("home-x"));
+            y = rtl.getNumber(ent.get("home-y"));
             newCoord.$assign(pas.GameMath.TPVector.New(((x + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,((y + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,0));
             char.fTarget.$assign(newCoord);
             ent.set("last-update",ATimeMS - (1000 * Math.random()));
@@ -5447,26 +5531,26 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
         };
       };
     };
-    this.SetField = function (AEntity, ASector, AX, AY) {
+    this.SetHomeTile = function (AEntity, ASector, AX, AY) {
       var ent = null;
       ent = this.GetData(AEntity);
-      ent.set("farm-sector",ASector);
-      ent.set("farm-x",AX);
-      ent.set("farm-y",AY);
+      ent.set("home-sector",ASector);
+      ent.set("home-x",AX);
+      ent.set("home-y",AY);
     };
   });
   rtl.createClass(this,"TPlayerBehavior",pas.ECS.TECComponent,function () {
   });
   rtl.createClass(this,"TGuardBehavior",this.TNPCBehavior,function () {
   });
-  rtl.createClass(this,"TKingBehavior",this.TNPCBehavior,function () {
+  rtl.createClass(this,"TKingBehavior",this.THomeTileBehavior,function () {
   });
   this.FarmerBehavior = null;
   this.GuardBehavior = null;
   this.KingBehavior = null;
   this.PlayerBehavior = null;
   $mod.$init = function () {
-    $mod.FarmerBehavior = pas.ldactor.RegisterComponent("farmer",$mod.TFarmerBehavior);
+    $mod.FarmerBehavior = pas.ldactor.RegisterComponent("farmer",$mod.THomeTileBehavior);
     $mod.GuardBehavior = pas.ldactor.RegisterComponent("guard",$mod.TGuardBehavior);
     $mod.KingBehavior = pas.ldactor.RegisterComponent("king",$mod.TKingBehavior);
     $mod.PlayerBehavior = pas.ldactor.RegisterComponent("player",$mod.TPlayerBehavior);
@@ -5588,11 +5672,16 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
               ch = pas.ldactor.SpawnCharacter(pas.ldactor.GetName(),"" + spawn,sec.fID,x * pas.ldconfig.Config.SectorSize,y * pas.ldconfig.Config.SectorSize);
               var $tmp1 = "" + spawn;
               if ($tmp1 === "farmer") {
-                pas.ldai.FarmerBehavior.SetField(ch.fActor,sec.fID,x,y)}
+                pas.ldai.FarmerBehavior.SetHomeTile(ch.fActor,sec.fID,x,y)}
                else if ($tmp1 === "player") {
                 this.StartSector = sec;
                 pas.ldactor.Player = ch;
-              } else if ($tmp1 === "king") pas.ldactor.King = ch;
+                if ((pas.ldactor.King != null) && (pas.ldactor.Player != null)) pas.ldai.KingBehavior.AddAnnoyance(pas.ldactor.King.fActor,pas.ldactor.Player.fActor,1000);
+              } else if ($tmp1 === "king") {
+                pas.ldactor.King = ch;
+                pas.ldai.KingBehavior.SetHomeTile(ch.fActor,sec.fID,x,y);
+                if ((pas.ldactor.King != null) && (pas.ldactor.Player != null)) pas.ldai.KingBehavior.AddAnnoyance(pas.ldactor.King.fActor,pas.ldactor.Player.fActor,1000);
+              };
             };
           };
         };
@@ -5672,6 +5761,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
        else if ($tmp === 2) Result = new Array();
       return Result;
     };
+    this.DoKeyPress = function (AKeyCode) {
+      if (AKeyCode === "Escape") this.SetCurrentAction(0);
+    };
     this.DoClick = function (AX, AY, AButtons) {
       var p = pas.GameMath.TPVector.$new();
       var h = false;
@@ -5700,10 +5792,10 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/field.png");
       pas.resources.TResources.AddImage("assets\/barley.png");
       pas.resources.TResources.AddImage("assets\/hops.png");
-      pas.resources.TResources.AddImage("assets\/farmer.png");
-      pas.resources.TResources.AddImage("assets\/king.png");
+      pas.resources.TResources.AddImage("assets\/Characters\/peasant.png");
+      pas.resources.TResources.AddImage("assets\/Characters\/king.png");
       pas.resources.TResources.AddImage("assets\/guard.png");
-      pas.resources.TResources.AddImage("assets\/player.png");
+      pas.resources.TResources.AddImage("assets\/Characters\/player.png");
       pas.resources.TResources.AddImage("assets\/well.png");
       pas.resources.TResources.AddImage("assets\/castle.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconHops.png");

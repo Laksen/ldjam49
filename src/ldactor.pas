@@ -24,6 +24,7 @@ type
 
   TLDCharacter = class(TGameElement)
   private
+    fAttacking: boolean;
     fBaseDamage: double;
     fGold: longint;
     fHP: double;
@@ -34,7 +35,7 @@ type
     fSpeed: double;
     fSprite: TGameSprite;
     fSector: Integer;
-    fTime, fLastTime: Double;
+    fTime, fAttackTime, fLastTime: Double;
     function GetAlive: boolean;
   protected
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
@@ -43,6 +44,8 @@ type
     constructor Create(const AName: string; ASprite: TGameSprite; ASector,AX,AY: integer);
 
     procedure GoldTransact(AGoldDiff: longint);
+
+    function TriggerAttack: boolean;
 
     property Name: string read fName;
     property Animation: string read fAnimation write fAnimation;
@@ -58,6 +61,7 @@ type
 
     // Movement
     property Target: TPVector read fTarget write fTarget;
+    property Attacking: boolean read fAttacking;
   end;
 
 var
@@ -71,6 +75,8 @@ var
   Behaviors: TJSMap;
 
 function GetName: string;
+
+procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double);
 
 function SpawnCharacter(const AName, AType: string; ASector,AX,AY: integer): TLDCharacter;
 
@@ -122,6 +128,27 @@ begin
   result:='Bob';
 end;
 
+procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double);
+var
+  sqrDist: double;
+  ch: TJSArray;
+  o: jsvalue;
+begin
+  sqrDist:=sqr(Config.DamageRange);
+
+  ch:=Characters.filter(function(el: jsvalue; idx: nativeint; arr: tjsarray): boolean
+  begin
+    result:=(TLDCharacter(el)<>AGiver) and
+            (TLDCharacter(el).Sector=ASector) and
+            (TLDCharacter(el).Position.Sub(AGiver.position).LengthSqr<sqrDist);
+  end);
+
+  for o in ch do
+  begin
+    writeln('Dealing damage to ',TLDCharacter(o).Actor.Key);
+  end;
+end;
+
 function SpawnCharacter(const AName, AType: string; ASector, AX, AY: integer): TLDCharacter;
 begin
   SectorMax:=Config.SectorSize*config.SectorTiles;
@@ -165,7 +192,10 @@ procedure TLDCharacter.Render(GL: TJSWebGLRenderingContext; const AViewport: TGa
 var
   frame: TGameFrame;
 begin
-  frame:=fSprite.GetFrame(fAnimation, fTime);
+  if fAttacking then
+    frame:=fSprite.GetFrame(fAnimation, fTime-fAttackTime)
+  else
+    frame:=fSprite.GetFrame(fAnimation, fTime);
 
   RenderFrame(gl, AViewport, GetCharRect(Position, 40,40), frame);
 end;
@@ -178,16 +208,35 @@ begin
   inherited Update(AGame, ATimeMS);
   fTime:=ATimeMS/1000;
 
-  fMoveDiff:=fTarget.Sub(Position);
-  fMoveLen:=fMoveDiff.LengthSqr;
-  fMaxMove:=(fTime-fLastTime)*fSpeed;
+  if fAttacking then
+    if (fTime-fAttackTime)>=fSprite.GetAnimation(fAnimation).AnimationTime then
+    begin
+      fAttacking:=false;
+      fAnimation:='idle';
 
-  if sqr(fMaxMove) >= fMoveLen then
-    Position:=fTarget
-  else if fMoveLen>0 then
-    Position:=Position.Add(fMoveDiff.Scale(fMaxMove/sqrt(fMoveLen)));
+      // Completed attack, damage nearby
+      DamageAt(Self, sector, position, BaseDamage);
+    end;
 
-  Position:=Position.Clamp(TPVector.New(0,0), TPVector.new(SectorMax,SectorMax));
+  if not fAttacking then
+  begin
+    fMoveDiff:=fTarget.Sub(Position);
+    fMoveLen:=fMoveDiff.LengthSqr;
+    fMaxMove:=(fTime-fLastTime)*fSpeed;
+
+    if sqr(fMaxMove) >= fMoveLen then
+    begin
+      Position:=fTarget;
+      fAnimation:='idle';
+    end
+    else if fMoveLen>0 then
+    begin
+      fAnimation:='walk';
+      Position:=Position.Add(fMoveDiff.Scale(fMaxMove/sqrt(fMoveLen)));
+    end;
+
+    Position:=Position.Clamp(TPVector.New(0,0), TPVector.new(SectorMax,SectorMax));
+  end;
 
   fLastTime:=fTime;
 end;
@@ -195,6 +244,7 @@ end;
 constructor TLDCharacter.Create(const AName: string; ASprite: TGameSprite; ASector, AX, AY: integer);
 begin
   inherited Create;
+  fAttacking:=false;
   fAnimation:='idle';
   fName:=AName;
   fActor:=TLDActor.Create(EntitySystem, self);
@@ -206,6 +256,17 @@ end;
 procedure TLDCharacter.GoldTransact(AGoldDiff: longint);
 begin
   fGold:=fGold+AGoldDiff;
+end;
+
+function TLDCharacter.TriggerAttack: boolean;
+begin
+  if fAttacking then
+    exit(false);
+
+  fAttackTime:=fTime;
+  fAttacking:=true;
+  fAnimation:='attack';
+  result:=true;
 end;
 
 initialization

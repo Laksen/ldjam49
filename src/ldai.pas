@@ -11,7 +11,7 @@ uses
   Classes, SysUtils, JS;
 
 type
-  TNPCState = (npcDead, npcAttacking, npcIdle);
+  TNPCState = (npcDead, npcAttacking, npcAttackMove, npcIdle);
   TFarmerState = (fsFarming);
 
   TNPCBehavior = class(TECComponent)
@@ -28,7 +28,7 @@ type
     procedure AddAnnoyance(AEntity, ATarget: TLDActor; AAnnoyance: double);
   end;
 
-  TFarmerBehavior = class(TNPCBehavior)
+  THomeTileBehavior = class(TNPCBehavior)
   private const
     UpdateInterval = 3;
   protected
@@ -36,7 +36,10 @@ type
 
     procedure Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double); override;
   public
-    procedure SetField(AEntity: TECEntity; ASector, AX,AY: longint);
+    procedure SetHomeTile(AEntity: TECEntity; ASector, AX,AY: longint);
+  end;
+
+  TFarmerBehavior = class(THomeTileBehavior)
   end;
 
   TPlayerBehavior = class(TECComponent)
@@ -45,11 +48,11 @@ type
   TGuardBehavior = class(TNPCBehavior)
   end;
 
-  TKingBehavior = class(TNPCBehavior)
+  TKingBehavior = class(THomeTileBehavior)
   end;
 
 var
-  FarmerBehavior: TFarmerBehavior;
+  FarmerBehavior: THomeTileBehavior;
   GuardBehavior:  TGuardBehavior;
   KingBehavior:   TKingBehavior;
 
@@ -60,22 +63,34 @@ implementation
 procedure TNPCBehavior.DoAttack(AEntity, ATarget: TLDActor);
 var
   diff: TPVector;
+  data: TJSMap;
+  dist: Double;
 begin
-  //writeln('Attack');
+  data:=GetData(AEntity);
 
   diff:=ATarget.Character.Position.sub(AEntity.Character.Position);
+  dist:=diff.LengthSqr;
 
-  AEntity.Character.Target:=ATarget.Character.Position;
+  if dist<100 then
+    AEntity.Character.TriggerAttack
+  else
+    AEntity.Character.Target:=ATarget.Character.Position;
 end;
 
 function TNPCBehavior.Distance(AEntity, ATarget: TLDActor): double;
 begin
-  result:=0;
+  result:=ATarget.Character.Position.sub(AEntity.Character.Position).Length;
 end;
 
 function TNPCBehavior.Annoyance(AEntity, ATarget: TLDActor): double;
+var
+  ann: TJSMap;
 begin
-  result:=10000;
+  result:=0;
+
+  ann:=TJSMap(GetData(AEntity).get('annoyances'));
+  if ann.has(ATarget.Key) then
+    result:=double(ann.get(ATarget.Key));
 end;
 
 function TNPCBehavior.WantsToAttack(AEntity, ATarget: TLDActor): boolean;
@@ -83,6 +98,7 @@ begin
   result:=false;
 
   if AEntity=ATarget then exit(false);
+  if AEntity.Character.Sector<>ATarget.Character.Sector then exit(false);
 
   if ATarget.Character=Player then
     result:=(Annoyance(AEntity, ATarget)>=Config.PlayerAnnoyanceLevel) and (Distance(AEntity, ATarget)<Config.PlayerAttackRange)
@@ -152,21 +168,21 @@ begin
     annoyances.&set(k, AAnnoyance);
 end;
 
-procedure TFarmerBehavior.Init(AEntity: TECEntity);
+procedure THomeTileBehavior.Init(AEntity: TECEntity);
 var
   ent: TJSMap;
 begin
   inherited Init(AEntity);
   ent:=GetData(AEntity);
 
-  ent.&set('farm-state', fsFarming);
-  ent.&set('farm-sector', 0);
-  ent.&set('farm-x', 0);
-  ent.&set('farm-y', 0);
+  ent.&set('home-state', fsFarming);
+  ent.&set('home-sector', 0);
+  ent.&set('home-x', 0);
+  ent.&set('home-y', 0);
   ent.&set('last-update', -100000.0);
 end;
 
-procedure TFarmerBehavior.Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double);
+procedure THomeTileBehavior.Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double);
 var
   ent: TJSMap;
   last_update, x, y: Double;
@@ -184,7 +200,7 @@ begin
 
   if npcState=npcIdle then
   begin
-    state:=TFarmerState(ent.get('farm-state'));
+    state:=TFarmerState(ent.get('home-state'));
 
     case state of
       fsFarming:
@@ -192,8 +208,8 @@ begin
           last_update:=double(ent.get('last-update'));
           if (ATimeMS-last_update)>(UpdateInterval*1000) then
           begin
-            x:=double(ent.get('farm-x'));
-            y:=double(ent.get('farm-y'));
+            x:=double(ent.get('home-x'));
+            y:=double(ent.get('home-y'));
 
             newCoord:=TPVector.New((x+random)*Config.SectorSize*0.99+0.01, (y+random)*Config.SectorSize*0.99+0.01);
             char.Target:=newCoord;
@@ -205,19 +221,19 @@ begin
   end;
 end;
 
-procedure TFarmerBehavior.SetField(AEntity: TECEntity; ASector, AX, AY: longint);
+procedure THomeTileBehavior.SetHomeTile(AEntity: TECEntity; ASector, AX, AY: longint);
 var
   ent: TJSMap;
 begin
   ent:=GetData(AEntity);
 
-  ent.&set('farm-sector', ASector);
-  ent.&set('farm-x', ax);
-  ent.&set('farm-y', ay);
+  ent.&set('home-sector', ASector);
+  ent.&set('home-x', ax);
+  ent.&set('home-y', ay);
 end;
 
 initialization
-  FarmerBehavior:=TFarmerBehavior(RegisterComponent('farmer', TFarmerBehavior));
+  FarmerBehavior:=THomeTileBehavior(RegisterComponent('farmer', THomeTileBehavior));
   GuardBehavior:=TGuardBehavior(RegisterComponent('guard', TGuardBehavior));
   KingBehavior:=TKingBehavior(RegisterComponent('king', TKingBehavior));
   PlayerBehavior:=TPlayerBehavior(RegisterComponent('player', TPlayerBehavior));

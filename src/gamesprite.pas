@@ -14,6 +14,7 @@ type
     Image: TGameTexture;
     Start, Stop: TPVector;
     StartTime: double;
+    Last: boolean;
   end;
 
   TGameAnimation = class
@@ -26,9 +27,10 @@ type
     constructor Create(const AName: string);
 
     procedure AddFrame(AImage: TGameTexture; AStart, AStop: TPVector; AFrameTime: double);
-    function GetFrame(ATime: double): TGameFrame;
+    function GetFrame(ATime: double; ALooping: boolean): TGameFrame;
 
     property Name: string read fName;
+    property AnimationTime: double read fLooptime;
   end;
 
   TGameSprite = class
@@ -39,7 +41,8 @@ type
   public
     constructor CreateJSON(const AInfo: TJSObject);
 
-    function GetFrame(const AAnimation: string; ATime: double): TGameFrame;
+    function GetAnimation(const AAnimation: string): TGameAnimation;
+    function GetFrame(const AAnimation: string; ATime: double; ALooping: boolean=true): TGameFrame;
 
     property Name: string read fName;
 
@@ -289,12 +292,17 @@ begin
   end;
 end;
 
-function TGameSprite.GetFrame(const AAnimation: string; ATime: double): TGameFrame;
+function TGameSprite.GetAnimation(const AAnimation: string): TGameAnimation;
+begin
+  result:=TGameAnimation(fAnimations.get(AAnimation));
+end;
+
+function TGameSprite.GetFrame(const AAnimation: string; ATime: double; ALooping: boolean): TGameFrame;
 var
   anim: TGameAnimation;
 begin
   anim:=TGameAnimation(fAnimations.get(AAnimation));
-  result:=anim.GetFrame(ATime);
+  result:=anim.GetFrame(ATime, ALooping);
 end;
 
 constructor TGameAnimation.Create(const AName: string);
@@ -306,21 +314,26 @@ end;
 
 procedure TGameAnimation.AddFrame(AImage: TGameTexture; AStart, AStop: TPVector; AFrameTime: double);
 begin
+  if length(fFrame)>0 then
+    fFrame[high(fFrame)].Last:=false;
+
   setlength(fFrame, high(fFrame)+2);
 
   fFrame[high(fFrame)].Image:=AImage;
   fFrame[high(fFrame)].Start:=AStart.Multiply(TPVector.new(1/AImage.Width, 1/AImage.Height));
   fFrame[high(fFrame)].Stop :=AStop.Multiply(TPVector.new(1/AImage.Width, 1/AImage.Height));
   fFrame[high(fFrame)].StartTime:=fLooptime;
+  fFrame[high(fFrame)].Last:=true;
 
   fLooptime:=fLooptime+AFrameTime;
 end;
 
-function TGameAnimation.GetFrame(ATime: double): TGameFrame;
+function TGameAnimation.GetFrame(ATime: double; ALooping: boolean): TGameFrame;
 var
   best, i: Integer;
 begin
-  ATime:=ATime mod fLooptime;
+  if ALooping then
+    ATime:=ATime mod fLooptime;
   best:=high(fFrame);
 
   for i:=0 to high(fFrame) do

@@ -650,7 +650,7 @@ begin
   inherited Create;
   fMax:=AMaxStage;
   fTimeOffset:=Random;
-  fSize:=0;
+  fSize:=fMax;
   Position:=TPVector.New(ax,ay);
   fSprite:=ASprite;
 end;

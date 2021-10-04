@@ -59,6 +59,7 @@ type
     procedure Update(ATimeMS: double); override;
     function GetElements: TJSArray; override;
   public
+    procedure DoKeyPress(AKeyCode: string); override;
     procedure DoClick(AX, AY: double; AButtons: longword); override;
 
     procedure InitializeResources; override;
@@ -176,13 +177,23 @@ begin
 
           case string(spawn) of
             'farmer':
-              FarmerBehavior.SetField(ch.Actor, sec.ID, x,y);
+              FarmerBehavior.SetHomeTile(ch.Actor, sec.ID, x,y);
             'player':
               begin
                 StartSector:=sec;
                 Player:=ch;
+
+                if assigned(king) and assigned(player) then
+                  KingBehavior.AddAnnoyance(king.Actor, player.Actor, 1000);
               end;
-            'king': King:=ch;
+            'king':
+              begin
+                King:=ch;
+                KingBehavior.SetHomeTile(ch.Actor, sec.ID, x,y);
+
+                if assigned(king) and assigned(player) then
+                  KingBehavior.AddAnnoyance(king.Actor, player.Actor, 1000);
+              end;
           end;
         end;
       end;
@@ -284,6 +295,12 @@ begin
   end;
 end;
 
+procedure TLD49Game.DoKeyPress(AKeyCode: string);
+begin
+  if AKeyCode='Escape' then
+    CurrentAction:=aMove;
+end;
+
 procedure TLD49Game.DoClick(AX, AY: double; AButtons: longword);
 var
   p: TPVector;
@@ -322,10 +339,10 @@ begin
   TResources.AddImage('assets/barley.png');
   TResources.AddImage('assets/hops.png');
 
-  TResources.AddImage('assets/farmer.png');
-  TResources.AddImage('assets/king.png');
+  TResources.AddImage('assets/Characters/peasant.png');
+  TResources.AddImage('assets/Characters/king.png');
   TResources.AddImage('assets/guard.png');
-  TResources.AddImage('assets/player.png');
+  TResources.AddImage('assets/Characters/player.png');
   TResources.AddImage('assets/well.png');
   TResources.AddImage('assets/castle.png');
 

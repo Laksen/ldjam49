@@ -18,6 +18,10 @@ type
     PlayerAttackRange,
     KingAnnoyanceLevel,
 
+    DamageRange,
+
+    DamageAnnoyanceRatio,
+
     AnnoyanceCooldown: double;
 
     Characters: TJSMap;
@@ -60,6 +64,8 @@ begin
   Config.PlayerAnnoyanceLevel:=TryGetDouble(fInfo,'PlayerAnnoyanceLevel',2);
   Config.PlayerAttackRange:=TryGetDouble(fInfo,'PlayerAttackRange',200);
   Config.KingAnnoyanceLevel:=TryGetDouble(fInfo,'KingAnnoyanceLevel',10);
+  Config.DamageRange:=TryGetDouble(fInfo,'DamageRange',200);
+  config.DamageAnnoyanceRatio:=TryGetDouble(fInfo,'DamageAnnoyanceRatio',1);
   Config.AnnoyanceCooldown:=TryGetDouble(fInfo,'AnnoyanceCooldown',0.9);
 
   Config.Characters:=TJSMap.new;
