@@ -63,7 +63,8 @@ type
 var
   SectorMax: double;
 
-  Player: TLDCharacter;
+  Player,
+  King: TLDCharacter;
 
   Characters: TJSarray;
 

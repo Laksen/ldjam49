@@ -24,7 +24,7 @@ type
     gsDialog
   );
 
-  TAction = (aMove, aAttack, aTalk, aUse);
+  TAction = (aMove, aAttack, aTalk, aUse, aPickUp);
 
   TLD49Game = class(TGameBase)
   private
@@ -182,6 +182,7 @@ begin
                 StartSector:=sec;
                 Player:=ch;
               end;
+            'king': King:=ch;
           end;
         end;
       end;
@@ -262,6 +263,7 @@ begin
       AddAction(aAttack, 'Attack', 175,0);
       AddAction(aTalk,   'Talk',   0,  50);
       AddAction(aUse,    'Use',    175,50);
+      AddAction(aPickUp, 'Pick up',0,  100);
 
       SetCurrentAction(aAttack);
       SetCurrentAction(aMove);
@@ -324,6 +326,8 @@ begin
   TResources.AddImage('assets/king.png');
   TResources.AddImage('assets/guard.png');
   TResources.AddImage('assets/player.png');
+  TResources.AddImage('assets/well.png');
+  TResources.AddImage('assets/castle.png');
 
   TResources.AddImage('assets/Icons/IconHops.png');
   TResources.AddImage('assets/Icons/IconBarley.png');

@@ -14,6 +14,12 @@ type
     SectorSize,
     GrowthTime: longint;
 
+    PlayerAnnoyanceLevel,
+    PlayerAttackRange,
+    KingAnnoyanceLevel,
+
+    AnnoyanceCooldown: double;
+
     Characters: TJSMap;
   end;
 
@@ -32,6 +38,14 @@ begin
     result:=ADefault;
 end;
 
+function TryGetDouble(AObj: TJSObject; const AKey: String; ADefault: double): double;
+begin
+  if AObj.hasOwnProperty(AKey) then
+    result:=double(AObj[akey])
+  else
+    result:=ADefault;
+end;
+
 procedure LoadConfig(const AInfo: string);
 var
   fInfo, obj: TJSObject;
@@ -42,6 +56,11 @@ begin
   Config.SectorTiles:=TryGet(fInfo,'SectorTiles',3);
   Config.SectorSize:=TryGet(fInfo,'SectorSize',150);
   Config.GrowthTime:=TryGet(fInfo,'GrowthTime',10);
+
+  Config.PlayerAnnoyanceLevel:=TryGetDouble(fInfo,'PlayerAnnoyanceLevel',2);
+  Config.PlayerAttackRange:=TryGetDouble(fInfo,'PlayerAttackRange',200);
+  Config.KingAnnoyanceLevel:=TryGetDouble(fInfo,'KingAnnoyanceLevel',10);
+  Config.AnnoyanceCooldown:=TryGetDouble(fInfo,'AnnoyanceCooldown',0.9);
 
   Config.Characters:=TJSMap.new;
 
