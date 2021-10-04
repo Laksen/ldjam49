@@ -1559,6 +1559,9 @@ rtl.module("System",[],function () {
     };
     return Result;
   };
+  this.Random = function (Range) {
+    return Math.floor(Math.random()*Range);
+  };
   this.Sqr = function (A) {
     return A*A;
   };
@@ -4993,15 +4996,20 @@ rtl.module("ldsounds",["System","JS","Web","Classes","SysUtils"],function () {
   var $mod = this;
   var $impl = $mod.$impl;
   this.AddSound = function (name, Snd) {
-    $impl.Sounds.set(name,Snd);
+    if (!$impl.Sounds.has(name)) $impl.Sounds.set(name,new Array());
+    $impl.Sounds.get(name).push(Snd);
   };
   this.GetSound = function (name) {
     var Result = null;
     var res = undefined;
+    var r = null;
     res = $impl.Sounds.get(name);
     if (res == undefined) {
       Result = null}
-     else Result = res;
+     else {
+      r = res;
+      Result = r[pas.System.Random(r.length)];
+    };
     return Result;
   };
   $mod.$implcode = function () {
@@ -6532,7 +6540,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         this.SetCurrentAction(5)}
        else if ($tmp === "KeyM") {
         this.fAudio.FadeAll($mod.fTime,400)}
-       else if ($tmp === "KeyN") this.MusicEnded(null);
+       else if ($tmp === "KeyN") {
+        this.MusicEnded(null)}
+       else if ($tmp === "KeyF") {
+        this.fAudio.Play(pas.ldsounds.GetSound("burp"),0.3,false)}
+       else {
+        pas.System.Writeln(AKeyCode);
+      };
     };
     this.DoClick = function (AX, AY, AButtons) {
       var p = pas.GameMath.TPVector.$new();
@@ -6626,11 +6640,18 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.ldsounds.AddSound("drink",pas.resources.TResources.AddSound("assets\/Audio\/proc_drinkaah.m4a"));
       pas.resources.TResources.AddSound("assets\/Audio\/proc_burp.m4a");
       pas.resources.TResources.AddSound("assets\/Audio\/proc_clunk.m4a");
-      pas.ldsounds.AddSound("guardattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_guardattack.m4a"));
       pas.ldsounds.AddSound("harvest",pas.resources.TResources.AddSound("assets\/Audio\/proc_harvest.m4a"));
-      pas.ldsounds.AddSound("kingattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_kingspeech.m4a"));
       pas.ldsounds.AddSound("pickup",pas.resources.TResources.AddSound("assets\/Audio\/proc_pickup.m4a"));
       pas.ldsounds.AddSound("drop",pas.resources.TResources.AddSound("assets\/Audio\/proc_plop.m4a"));
+      pas.ldsounds.AddSound("kingattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_kingspeech.m4a"));
+      pas.ldsounds.AddSound("guardattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_guardattack.m4a"));
+      pas.ldsounds.AddSound("playerattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_slap.m4a"));
+      pas.ldsounds.AddSound("death",pas.resources.TResources.AddSound("assets\/Audio\/battlecryDeath.m4a"));
+      pas.ldsounds.AddSound("death",pas.resources.TResources.AddSound("assets\/Audio\/uuaah.m4a"));
+      pas.ldsounds.AddSound("death",pas.resources.TResources.AddSound("assets\/Audio\/wargh.m4a"));
+      pas.ldsounds.AddSound("burp",pas.resources.TResources.AddSound("assets\/Audio\/burp.m4a"));
+      pas.ldsounds.AddSound("burp",pas.resources.TResources.AddSound("assets\/Audio\/burp2.m4a"));
+      pas.ldsounds.AddSound("burp",pas.resources.TResources.AddSound("assets\/Audio\/Ofart.m4a"));
     };
     this.AfterLoad = function () {
       var i = 0;

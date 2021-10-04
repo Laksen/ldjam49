@@ -18,22 +18,32 @@ var
 
 procedure AddSound(name: string; Snd: TJSHTMLAudioElement);
 begin
-  sounds.&set(name, snd);
+  if not sounds.has(name) then
+    sounds.&set(name, tjsarray.new);
+
+  TJSArray(sounds.get(name)).push(snd);
 end;
 
 function GetSound(name: string): TJSHTMLAudioElement;
 var
   res: JSValue;
+  r: TJSArray;
 begin
   res:=Sounds.get(name);
+
   if res=Undefined then
     result:=nil
   else
-    result:=TJSHTMLAudioElement(res);
+  begin
+    r:=tjsarray(res);
+
+    result:=TJSHTMLAudioElement(r[Random(r.length)]);
+  end;
 end;
 
 initialization
   Sounds:=TJSmap.new;
 
 end.
+
 

@@ -811,6 +811,10 @@ begin
 
     'KeyM': Audio.FadeAll(fTime, 400);
     'KeyN': MusicEnded(nil);
+
+    'KeyF': Audio.Play(GetSound('burp'), 0.3)
+  else
+    writeln(AKeyCode);
   end;
 end;
 
@@ -921,11 +925,21 @@ begin
   AddSound('drink', TResources.AddSound('assets/Audio/proc_drinkaah.m4a'));
   TResources.AddSound('assets/Audio/proc_burp.m4a');
   TResources.AddSound('assets/Audio/proc_clunk.m4a');
-  AddSound('guardattack', TResources.AddSound('assets/Audio/proc_guardattack.m4a'));
   AddSound('harvest', TResources.AddSound('assets/Audio/proc_harvest.m4a'));
-  AddSound('kingattack', TResources.AddSound('assets/Audio/proc_kingspeech.m4a'));
   AddSound('pickup', TResources.AddSound('assets/Audio/proc_pickup.m4a'));
   AddSound('drop', TResources.AddSound('assets/Audio/proc_plop.m4a'));
+                                                                                 
+  AddSound('kingattack', TResources.AddSound('assets/Audio/proc_kingspeech.m4a'));
+  AddSound('guardattack', TResources.AddSound('assets/Audio/proc_guardattack.m4a'));
+  AddSound('playerattack', TResources.AddSound('assets/Audio/proc_slap.m4a'));
+
+  AddSound('death', TResources.AddSound('assets/Audio/battlecryDeath.m4a'));
+  AddSound('death', TResources.AddSound('assets/Audio/uuaah.m4a'));
+  AddSound('death', TResources.AddSound('assets/Audio/wargh.m4a'));
+
+  AddSound('burp', TResources.AddSound('assets/Audio/burp.m4a'));
+  AddSound('burp', TResources.AddSound('assets/Audio/burp2.m4a'));
+  AddSound('burp', TResources.AddSound('assets/Audio/Ofart.m4a'));
 end;
 
 procedure TLD49Game.AfterLoad;
