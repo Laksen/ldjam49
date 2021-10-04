@@ -17,6 +17,9 @@ type
     BarleyHarvest,
     HopsHarvest: longint;
 
+    HealingFactor,
+    BacLowering,
+
     PlayerReach,
 
     PlayerAnnoyanceLevel,
@@ -65,8 +68,12 @@ begin
   Config.SectorTiles:=TryGet(fInfo,'SectorTiles',3);
   Config.SectorSize:=TryGet(fInfo,'SectorSize',150);
   Config.GrowthTime:=TryGet(fInfo,'GrowthTime',10);
+
   Config.BarleyHarvest:=TryGet(fInfo,'BarleyHarvest',3);
   Config.HopsHarvest:=TryGet(fInfo,'HopsHarvest',2);
+
+  config.HealingFactor:=TryGetDouble(fInfo,'HealingFactor',0.05);
+  config.BacLowering:=TryGetDouble(fInfo,'BacLowering',0.0005);
 
   Config.PlayerReach:=TryGetDouble(fInfo,'PlayerReach',30);
   Config.PlayerAnnoyanceLevel:=TryGetDouble(fInfo,'PlayerAnnoyanceLevel',2);

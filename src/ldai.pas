@@ -102,6 +102,7 @@ begin
 
   if AEntity=ATarget then exit(false);
   if AEntity.Character.Sector<>ATarget.Character.Sector then exit(false);
+  if not atarget.Character.Alive then exit(false);
 
   if ATarget.Character=Player then
     result:=(Annoyance(AEntity, ATarget)>=Config.PlayerAnnoyanceLevel) and (Distance(AEntity, ATarget)<Config.PlayerAttackRange)

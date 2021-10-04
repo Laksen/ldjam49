@@ -505,7 +505,7 @@ begin
     .Multiply(AViewport.ModelView)
     .Multiply(TPMatrix.CreateTranslation(Position.X, Position.Y, 0));
 
-  TGameFont.Render(AContext, fTextRun, SubViewPort, Color);
+  TGameFont.Render(AContext, fTextRun, SubViewPort, Color, color.a);
 
   inherited Render(AContext, AViewport);
 end;

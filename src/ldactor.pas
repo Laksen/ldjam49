@@ -26,9 +26,12 @@ type
   private
     fAttacking: boolean;
     fAttackSound: TJSHTMLAudioElement;
+    fBac: double;
     fBaseDamage: double;
+    fBaseHP: double;
     fGold: longint;
     fHP: double;
+    fNau: double;
     fTarget: TPVector;
     fName: String;
     fActor: TLDActor;
@@ -38,6 +41,9 @@ type
     fSector: Integer;
     fTime, fAttackTime, fLastTime: Double;
     function GetAlive: boolean;
+    function GetDamage: double;
+    function GetMaxHP: double;
+    function GetSpeed: double;
   protected
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
     procedure Update(AGame: TGameBase; ATimeMS: double); override;
@@ -45,6 +51,9 @@ type
     constructor Create(const AName: string; ASprite: TGameSprite; ASector,AX,AY: integer);
 
     procedure GoldTransact(AGoldDiff: longint);
+
+    procedure DrinkBeer(AStrength: double);
+    procedure DealDamage(ADamage: double);
 
     function TriggerAttack: boolean;
 
@@ -54,8 +63,19 @@ type
     property Actor: TLDActor read fActor;
 
     property Alive: boolean read GetAlive;
-    property HP: double read fHP write fHP;
-    property Speed: double read fSpeed write fSpeed;
+
+    property HP: double read fHP write fHp;
+    property Bac: double read fBac write fBac;
+    property Nau: double read fNau write fNau;
+
+
+
+    property MaxHP: double read GetMaxHP;
+    property Speed: double read GetSpeed;
+    property Damage: double read GetDamage;
+
+    property BaseHP: double read fBaseHP write fBaseHP;
+    property BaseSpeed: double read fSpeed write fSpeed;
     property BaseDamage: double read fBaseDamage write fBaseDamage;
 
     property Gold: longint read fGold write fGold;
@@ -67,6 +87,10 @@ type
     property AttackSound: TJSHTMLAudioElement read fAttackSound write fAttackSound;
   end;
 
+const
+  MaxBAC = 6;
+  MaxNau = 1;
+
 var
   SectorMax: double;
 
@@ -76,7 +100,7 @@ var
   CharactersVisible,
   Characters: TJSarray;
 
-  Behaviors: TJSMap;
+  Behaviors: TJSMap = nil;
 
 function GetName: string;
 
@@ -91,6 +115,7 @@ procedure ShowCharacters(ASector: longint);
 implementation
 
 uses
+  ldai,
   ldmap,
   ldsounds,
   ldconfig;
@@ -103,7 +128,8 @@ begin
   cfg:=TJSObject(Config.Characters.get(AType));
 
   AChar.HP:=double(cfg['hp']);
-  AChar.Speed:=double(cfg['speed']);
+  AChar.BaseHP:=double(cfg['hp']);
+  AChar.BaseSpeed:=double(cfg['speed']);
   AChar.BaseDamage:=double(cfg['damage']);
 
   AChar.AttackSound:=GetSound(string(cfg['attacksound']));
@@ -123,12 +149,12 @@ begin
   result:=GetSprite(spriteName);
 end;
 
-function GetCharRect(ACenter: TPVector; AWidth, AHeight: double): TGameQuad;
+function GetCharRect(ACenter: TPVector; AWidth, AHeight: double; YOffset: double = 0; XScale: double = 1): TGameQuad;
 begin
-  result[0]:=ACenter.Add(TPVector.new(-AWidth/2, 0, AHeight));
-  result[1]:=ACenter.Add(TPVector.new( AWidth/2, 0, AHeight));
-  result[2]:=ACenter.Add(TPVector.new( AWidth/2, 0, 0));
-  result[3]:=ACenter.Add(TPVector.new(-AWidth/2, 0, 0));
+  result[0]:=ACenter.Add(TPVector.new(-AWidth/2,               0, AHeight));
+  result[1]:=ACenter.Add(TPVector.new(-AWidth/2+AWidth*XScale, 0, AHeight));
+  result[2]:=ACenter.Add(TPVector.new(-AWidth/2+AWidth*XScale, 0, YOffset));
+  result[3]:=ACenter.Add(TPVector.new(-AWidth/2,               0, YOffset));
 end;
 
 function GetName: string;
@@ -141,6 +167,7 @@ var
   sqrDist: double;
   ch: TJSArray;
   o: jsvalue;
+  oo: TLDCharacter;
 begin
   sqrDist:=sqr(Config.DamageRange);
 
@@ -153,7 +180,15 @@ begin
 
   for o in ch do
   begin
-    writeln('Dealing damage to ',TLDCharacter(o).Actor.Key);
+    TLDCharacter(o).DealDamage(ADamage);
+
+    oo:=TLDCharacter(o);
+    if oo<>player then
+    begin
+      if oo.Actor.HasComponent(KingBehavior)   then KingBehavior.AddAnnoyance(oo.actor, agiver.actor, ADamage*config.DamageAnnoyanceRatio);
+      if oo.Actor.HasComponent(GuardBehavior)  then GuardBehavior.AddAnnoyance(oo.actor, agiver.actor, ADamage*config.DamageAnnoyanceRatio);
+      if oo.Actor.HasComponent(FarmerBehavior) then FarmerBehavior.AddAnnoyance(oo.actor, agiver.actor, ADamage*config.DamageAnnoyanceRatio);
+    end;
   end;
 end;
 
@@ -171,6 +206,9 @@ end;
 
 function RegisterComponent(const AName: string; AType: TECComponentClass): TECComponent;
 begin
+  if behaviors=nil then
+    behaviors:=TJSmap.new;
+
   result:=EntitySystem.RegisterComponent(AType);
   Behaviors.&set(AName, result);
 end;
@@ -199,6 +237,21 @@ begin
   result:=fHP>0;
 end;
 
+function TLDCharacter.GetDamage: double;
+begin
+  result:=fBaseDamage*(1+Bac/MaxBAC);
+end;
+
+function TLDCharacter.GetMaxHP: double;
+begin
+  result:=fBaseHP*(1+Bac/MaxBAC);
+end;
+
+function TLDCharacter.GetSpeed: double;
+begin
+  result:=fSpeed*(1+Bac/MaxBAC);
+end;
+
 procedure TLDCharacter.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 var
   frame: TGameFrame;
@@ -209,12 +262,16 @@ begin
     frame:=fSprite.GetFrame(fAnimation, fTime);
 
   RenderFrame(gl, AViewport, GetCharRect(Position, 40,40), frame);
+
+  RenderQuad(gl, aviewport, GetCharRect(position,  40,43,42, HP  / MaxHP),  TGameColor.New(1,0,0));
+  RenderQuad(gl, aviewport, GetCharRect(position,  40,42,41, Bac / MaxBac), TGameColor.New(0,1,0));
+  RenderQuad(gl, aviewport, GetCharRect(position,  40,41,40, Nau / MaxNau), TGameColor.New(0,0,1));
 end;
 
 procedure TLDCharacter.Update(AGame: TGameBase; ATimeMS: double);
 var
   fMoveDiff: TPVector;
-  fMoveLen, fMaxMove: Double;
+  fMoveLen, fMaxMove, delta: Double;
 
   procedure TestTravel(AX,AY: integer; ACorrection: TPVector);
   var
@@ -233,6 +290,21 @@ var
 
 begin
   inherited Update(AGame, ATimeMS);
+
+  delta:=(ATimems/1000-fTime);
+
+  if Alive then
+  begin
+    if fHP<MaxHP then
+      fHP:=fHP+ delta*Config.HealingFactor*MaxHP;
+
+    if fHP>MaxHP then
+      fHP:=MaxHP;
+
+    fBAC:=fBac-delta*config.BacLowering;
+    if fbac<0 then fbac:=0;
+  end;
+
   fTime:=ATimeMS/1000;
 
   if fAttacking then
@@ -242,14 +314,14 @@ begin
       fAnimation:='idle';
 
       // Completed attack, damage nearby
-      DamageAt(Self, sector, position, BaseDamage);
+      DamageAt(Self, sector, position, Damage);
     end;
 
   if not fAttacking then
   begin
     fMoveDiff:=fTarget.Sub(Position);
     fMoveLen:=fMoveDiff.LengthSqr;
-    fMaxMove:=(fTime-fLastTime)*fSpeed;
+    fMaxMove:=(fTime-fLastTime)*Speed;
 
     if sqr(fMaxMove) >= fMoveLen then
     begin
@@ -298,6 +370,18 @@ begin
   fGold:=fGold+AGoldDiff;
 end;
 
+procedure TLDCharacter.DrinkBeer(AStrength: double);
+begin
+  Bac:=Bac+AStrength;
+end;
+
+procedure TLDCharacter.DealDamage(ADamage: double);
+begin
+  HP:=HP-ADamage;
+  if hp<0 then
+    hp:=0;
+end;
+
 function TLDCharacter.TriggerAttack: boolean;
 begin
   if fAttacking then
@@ -314,7 +398,6 @@ end;
 
 initialization
   Characters:=TJSArray.new;
-  Behaviors:=TJSMap.new;
 
 end.
 
