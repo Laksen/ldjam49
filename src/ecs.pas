@@ -88,6 +88,9 @@ var
 
 implementation
 
+var
+  idxCtr: integer;
+
 function TECComponent.GetName: string;
 begin
   result:=''
@@ -122,14 +125,14 @@ end;
 
 function TECEntity.GetKey: string;
 begin
-  if fKey='' then
-    fKey:=inttostr(fIndex);
   result:=fKey;
 end;
 
 constructor TECEntity.Create(ASystem: TECSystem);
 begin
   inherited Create;
+  fKey:=inttostr(idxCtr);
+  inc(idxCtr);
   Components:=TJSArray.new;
   fSystem:=ASystem;
   fSystem.AddEntity(self);

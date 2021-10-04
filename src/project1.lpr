@@ -60,6 +60,8 @@ type
 
     procedure MakeDialog;
   private
+    StatusLabel: TGUILabel;
+
     // Main GUI
     MainGUI: TGUI;
     MainGuiPanel: TGUIPanel;
@@ -358,6 +360,8 @@ begin
 end;
 
 procedure TLD49Game.ClickInventory(AItem: TGameSprite);
+var
+  s: double;
 begin
   case CurrentAction of
     aDrop:
@@ -371,12 +375,21 @@ begin
     aUse:
       begin
         case AItem.Name of
+          'icon-beer-reg':s:=0.5;
+          'icon-beer-med':s:=1.0;
+          'icon-beer-strong':s:=2.0;
+          'icon-beer-suicide':s:=5;
+        end;
+
+        case AItem.Name of
           'icon-beer-reg',
           'icon-beer-med',
           'icon-beer-strong',
           'icon-beer-suicide':
             begin
-              writestatus('Drink '+AItem.Name+'!');
+              Player.DrinkBeer(s);
+
+              //writestatus('Drink '+AItem.Name+'!');
               Game.Audio.Play(GetSound('drink'), 0.8);
               RemoveInventory(aitem.Name, 1);
             end;
@@ -391,6 +404,9 @@ end;
 
 procedure TLD49Game.WriteStatus(const AMessage: string);
 begin
+  StatusLabel.Caption:=amessage;
+  StatusLabel.Color:=tgamecolor.New(1,1,1);
+
   writeln(amessage);
 end;
 
@@ -710,6 +726,14 @@ var
   end;
 
 begin
+  StatusLabel:=TGUILabel.Create;
+  MainGUI.AddChild(StatusLabel);
+  StatusLabel.Font:='sans';
+  StatusLabel.Size:=30;
+  StatusLabel.caption:='';
+  StatusLabel.Color:=tgamecolor.Transparent;
+  StatusLabel.HitTestVisible:=false;
+
   PanelBG:=TGameColor.new(0.4,0.4,0.4);;
 
   MainGUI.Position:=TPVector.New(0,0,1);
@@ -748,6 +772,8 @@ begin
       AddInventory('icon-bucket', 1);
       AddInventory('icon-scythe', 1);
 
+      AddInventory('icon-beer-strong', 10);
+
     ActionPanel:=TGUIPanel.Create;
     ActionPanel.SetSize(352,2,350, GUIHeight-2);
     ActionPanel.BackGround:=PanelBG;
@@ -785,12 +811,18 @@ begin
 end;
 
 procedure TLD49Game.Update(ATimeMS: double);
+var
+  x: TGameColor;
 begin
   inherited Update(ATimeMS);
-  fTime:=ATimeMS;
   InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);
 
+  x:=StatusLabel.Color;
+  x.A:=x.A - (ATimeMS-fTime)/1000;
+  if x.a<0 then x.a:=0;
+  StatusLabel.Color:=x;
 
+  fTime:=ATimeMS;
 end;
 
 function TLD49Game.GetElements: TJSArray;

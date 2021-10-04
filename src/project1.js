@@ -4491,7 +4491,7 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       Scaling = this.fSize / H;
       SubViewPort.$assign(AViewport);
       SubViewPort.ModelView = pas.GameMath.TPMatrix.$create("CreateTranslation",[-this.fTextRun.X,-this.fTextRun.Y,0]).Multiply$1(pas.GameMath.TPMatrix.$create("CreateScale",[Scaling,Scaling,1])).Multiply$1(AViewport.ModelView).Multiply$1(pas.GameMath.TPMatrix.$create("CreateTranslation",[this.fPosition.X,this.fPosition.Y,0]));
-      pas.GameFont.TGameFont.Render(AContext,pas.GameFont.TTextRun.$clone(this.fTextRun),pas.GameBase.TGameViewport.$clone(SubViewPort),pas.GameBase.TGameColor.$clone(this.fColor),1);
+      pas.GameFont.TGameFont.Render(AContext,pas.GameFont.TTextRun.$clone(this.fTextRun),pas.GameBase.TGameViewport.$clone(SubViewPort),pas.GameBase.TGameColor.$clone(this.fColor),this.fColor.A);
       pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
     };
     this.Create$3 = function () {
@@ -4777,11 +4777,11 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
 rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],function () {
   "use strict";
   var $mod = this;
+  var $impl = $mod.$impl;
   rtl.createClass(this,"TECEntity",pas.System.TObject,function () {
     this.$init = function () {
       pas.System.TObject.$init.call(this);
       this.fKey = "";
-      this.fIndex = 0;
       this.fSystem = null;
       this.fComponentData = [];
       this.Components = null;
@@ -4799,12 +4799,13 @@ rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],funct
     };
     this.GetKey = function () {
       var Result = "";
-      if (this.fKey === "") this.fKey = pas.SysUtils.IntToStr(this.fIndex);
       Result = this.fKey;
       return Result;
     };
     this.Create$1 = function (ASystem) {
       pas.System.TObject.Create.call(this);
+      this.fKey = pas.SysUtils.IntToStr($impl.idxCtr);
+      $impl.idxCtr += 1;
       this.Components = new Array();
       this.fSystem = ASystem;
       this.fSystem.AddEntity(this);
@@ -4907,10 +4908,13 @@ rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],funct
     };
   });
   this.EntitySystem = null;
+  $mod.$implcode = function () {
+    $impl.idxCtr = 0;
+  };
   $mod.$init = function () {
     $mod.EntitySystem = $mod.TECSystem.$create("Create$2");
   };
-});
+},[]);
 rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
@@ -4921,6 +4925,8 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     this.GrowthTime = 0;
     this.BarleyHarvest = 0;
     this.HopsHarvest = 0;
+    this.HealingFactor = 0.0;
+    this.BacLowering = 0.0;
     this.PlayerReach = 0.0;
     this.PlayerAnnoyanceLevel = 0.0;
     this.PlayerAttackRange = 0.0;
@@ -4930,7 +4936,7 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     this.AnnoyanceCooldown = 0.0;
     this.Characters = null;
     this.$eq = function (b) {
-      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.BarleyHarvest === b.BarleyHarvest) && (this.HopsHarvest === b.HopsHarvest) && (this.PlayerReach === b.PlayerReach) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.DamageRange === b.DamageRange) && (this.DamageAnnoyanceRatio === b.DamageAnnoyanceRatio) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
+      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.BarleyHarvest === b.BarleyHarvest) && (this.HopsHarvest === b.HopsHarvest) && (this.HealingFactor === b.HealingFactor) && (this.BacLowering === b.BacLowering) && (this.PlayerReach === b.PlayerReach) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.DamageRange === b.DamageRange) && (this.DamageAnnoyanceRatio === b.DamageAnnoyanceRatio) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
     };
     this.$assign = function (s) {
       this.SectorTiles = s.SectorTiles;
@@ -4938,6 +4944,8 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
       this.GrowthTime = s.GrowthTime;
       this.BarleyHarvest = s.BarleyHarvest;
       this.HopsHarvest = s.HopsHarvest;
+      this.HealingFactor = s.HealingFactor;
+      this.BacLowering = s.BacLowering;
       this.PlayerReach = s.PlayerReach;
       this.PlayerAnnoyanceLevel = s.PlayerAnnoyanceLevel;
       this.PlayerAttackRange = s.PlayerAttackRange;
@@ -4960,6 +4968,8 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     $mod.Config.GrowthTime = $impl.TryGet(fInfo,"GrowthTime",10);
     $mod.Config.BarleyHarvest = $impl.TryGet(fInfo,"BarleyHarvest",3);
     $mod.Config.HopsHarvest = $impl.TryGet(fInfo,"HopsHarvest",2);
+    $mod.Config.HealingFactor = $impl.TryGetDouble(fInfo,"HealingFactor",0.05);
+    $mod.Config.BacLowering = $impl.TryGetDouble(fInfo,"BacLowering",0.0005);
     $mod.Config.PlayerReach = $impl.TryGetDouble(fInfo,"PlayerReach",30);
     $mod.Config.PlayerAnnoyanceLevel = $impl.TryGetDouble(fInfo,"PlayerAnnoyanceLevel",2);
     $mod.Config.PlayerAttackRange = $impl.TryGetDouble(fInfo,"PlayerAttackRange",100);
@@ -5019,6 +5029,156 @@ rtl.module("ldsounds",["System","JS","Web","Classes","SysUtils"],function () {
     $impl.Sounds = new Map();
   };
 },[]);
+rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","SysUtils","JS"],function () {
+  "use strict";
+  var $mod = this;
+  this.TNPCState = {"0": "npcDead", npcDead: 0, "1": "npcAttacking", npcAttacking: 1, "2": "npcAttackMove", npcAttackMove: 2, "3": "npcIdle", npcIdle: 3};
+  this.TIdlingState = {"0": "isRumaging", isRumaging: 0};
+  rtl.createClass(this,"TNPCBehavior",pas.ECS.TECComponent,function () {
+    this.DoAttack = function (AEntity, ATarget) {
+      var diff = pas.GameMath.TPVector.$new();
+      var data = null;
+      var dist = 0.0;
+      data = this.GetData(AEntity);
+      diff.$assign(ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition));
+      dist = diff.LengthSqr();
+      if (dist < 100) {
+        AEntity.fCharacter.TriggerAttack()}
+       else AEntity.fCharacter.fTarget.$assign(ATarget.fCharacter.fPosition);
+    };
+    this.Distance = function (AEntity, ATarget) {
+      var Result = 0.0;
+      Result = ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition).Length();
+      return Result;
+    };
+    this.Annoyance = function (AEntity, ATarget) {
+      var Result = 0.0;
+      var ann = null;
+      Result = 0;
+      ann = this.GetData(AEntity).get("annoyances");
+      if (ann.has(ATarget.GetKey())) Result = rtl.getNumber(ann.get(ATarget.GetKey()));
+      return Result;
+    };
+    this.WantsToAttack = function (AEntity, ATarget) {
+      var Result = false;
+      Result = false;
+      if (AEntity === ATarget) return false;
+      if (AEntity.fCharacter.fSector !== ATarget.fCharacter.fSector) return false;
+      if (!ATarget.fCharacter.GetAlive()) return false;
+      if (ATarget.fCharacter === pas.ldactor.Player) {
+        Result = (this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.PlayerAnnoyanceLevel) && (this.Distance(AEntity,ATarget) < pas.ldconfig.Config.PlayerAttackRange)}
+       else if (ATarget.fCharacter === pas.ldactor.King) Result = this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.KingAnnoyanceLevel;
+      return Result;
+    };
+    this.Init = function (AEntity) {
+      var data = null;
+      pas.ECS.TECComponent.Init.call(this,AEntity);
+      data = this.GetData(AEntity);
+      data.set("state",3);
+      data.set("annoyances",new Map());
+    };
+    this.Update = function (AEntity, ADeltaMS, ATimeMS) {
+      var data = null;
+      var annoyances = null;
+      var k = "";
+      var coolDown = 0.0;
+      pas.ECS.TECComponent.Update.call(this,AEntity,ADeltaMS,ATimeMS);
+      data = this.GetData(AEntity);
+      coolDown = pas.ldconfig.Config.AnnoyanceCooldown;
+      annoyances = data.get("annoyances");
+      for (k in annoyances.keys()) annoyances.set(k,rtl.getNumber(annoyances.get(k)) * coolDown * ADeltaMS);
+      if (!AEntity.fCharacter.GetAlive()) {
+        data.set("state",0)}
+       else if (this.WantsToAttack(AEntity,pas.ldactor.Player.fActor)) {
+        data.set("state",1);
+        data.set("target",pas.ldactor.Player);
+        this.DoAttack(AEntity,pas.ldactor.Player.fActor);
+      } else if (this.WantsToAttack(AEntity,pas.ldactor.King.fActor)) {
+        data.set("state",1);
+        data.set("target",pas.ldactor.King);
+        this.DoAttack(AEntity,pas.ldactor.King.fActor);
+      } else data.set("state",3);
+    };
+    this.AddAnnoyance = function (AEntity, ATarget, AAnnoyance) {
+      var data = null;
+      var annoyances = null;
+      var k = "";
+      data = this.GetData(AEntity);
+      annoyances = data.get("annoyances");
+      k = ATarget.GetKey();
+      if (annoyances.has(k)) {
+        annoyances.set(k,rtl.getNumber(annoyances.get(k)) + AAnnoyance)}
+       else annoyances.set(k,AAnnoyance);
+    };
+  });
+  rtl.createClass(this,"THomeTileBehavior",this.TNPCBehavior,function () {
+    this.UpdateInterval = 5;
+    this.Init = function (AEntity) {
+      var ent = null;
+      $mod.TNPCBehavior.Init.call(this,AEntity);
+      ent = this.GetData(AEntity);
+      ent.set("home-state",0);
+      ent.set("home-sector",0);
+      ent.set("home-x",0);
+      ent.set("home-y",0);
+      ent.set("last-update",-100000.0);
+    };
+    this.Update = function (AEntity, ADeltaMS, ATimeMS) {
+      var ent = null;
+      var last_update = 0.0;
+      var x = 0.0;
+      var y = 0.0;
+      var char = null;
+      var newCoord = pas.GameMath.TPVector.$new();
+      var state = 0;
+      var npcState = 0;
+      ent = this.GetData(AEntity);
+      char = AEntity.fCharacter;
+      $mod.TNPCBehavior.Update.call(this,AEntity,ADeltaMS,ATimeMS);
+      npcState = ent.get("state");
+      if (npcState === 3) {
+        state = ent.get("home-state");
+        var $tmp = state;
+        if ($tmp === 0) {
+          last_update = rtl.getNumber(ent.get("last-update"));
+          if ((ATimeMS - last_update) > (5 * 1000)) {
+            x = rtl.getNumber(ent.get("home-x"));
+            y = rtl.getNumber(ent.get("home-y"));
+            newCoord.$assign(pas.GameMath.TPVector.New(((x + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,((y + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,0));
+            char.fTarget.$assign(newCoord);
+            if (char.fVisible && $mod.TFarmerBehavior.isPrototypeOf(this)) pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("rake"),0.3,false);
+            ent.set("last-update",ATimeMS - (1000 * Math.random()));
+          };
+        };
+      };
+    };
+    this.SetHomeTile = function (AEntity, ASector, AX, AY) {
+      var ent = null;
+      ent = this.GetData(AEntity);
+      ent.set("home-sector",ASector);
+      ent.set("home-x",AX);
+      ent.set("home-y",AY);
+    };
+  });
+  rtl.createClass(this,"TFarmerBehavior",this.THomeTileBehavior,function () {
+  });
+  rtl.createClass(this,"TPlayerBehavior",pas.ECS.TECComponent,function () {
+  });
+  rtl.createClass(this,"TGuardBehavior",this.THomeTileBehavior,function () {
+  });
+  rtl.createClass(this,"TKingBehavior",this.THomeTileBehavior,function () {
+  });
+  this.FarmerBehavior = null;
+  this.GuardBehavior = null;
+  this.KingBehavior = null;
+  this.PlayerBehavior = null;
+  $mod.$init = function () {
+    $mod.FarmerBehavior = pas.ldactor.RegisterComponent("farmer",$mod.THomeTileBehavior);
+    $mod.GuardBehavior = pas.ldactor.RegisterComponent("guard",$mod.TGuardBehavior);
+    $mod.KingBehavior = pas.ldactor.RegisterComponent("king",$mod.TKingBehavior);
+    $mod.PlayerBehavior = pas.ldactor.RegisterComponent("player",$mod.TPlayerBehavior);
+  };
+},["GameBase","ldsounds"]);
 rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","Web","webgl","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
@@ -5043,9 +5203,12 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       pas.GameBase.TGameElement.$init.call(this);
       this.fAttacking = false;
       this.fAttackSound = null;
+      this.fBac = 0.0;
       this.fBaseDamage = 0.0;
+      this.fBaseHP = 0.0;
       this.fGold = 0;
       this.fHP = 0.0;
+      this.fNau = 0.0;
       this.fTarget = pas.GameMath.TPVector.$new();
       this.fName = "";
       this.fActor = null;
@@ -5069,18 +5232,37 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       Result = this.fHP > 0;
       return Result;
     };
+    this.GetDamage = function () {
+      var Result = 0.0;
+      Result = this.fBaseDamage * (1 + (this.fBac / 6));
+      return Result;
+    };
+    this.GetMaxHP = function () {
+      var Result = 0.0;
+      Result = this.fBaseHP * (1 + (this.fBac / 6));
+      return Result;
+    };
+    this.GetSpeed = function () {
+      var Result = 0.0;
+      Result = this.fSpeed * (1 + (this.fBac / 6));
+      return Result;
+    };
     this.Render = function (GL, AViewport) {
       var frame = pas.GameSprite.TGameFrame.$new();
       if (this.fAttacking) {
         frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime - this.fAttackTime,true))}
        else frame.$assign(this.fSprite.GetFrame(this.fAnimation,this.fTime,true));
-      pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,40),frame);
+      pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,40,0,1),frame);
+      pas.GameSprite.RenderQuad(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,43,42,this.fHP / this.GetMaxHP()),pas.GameBase.TGameColor.New(1,0,0,1.0));
+      pas.GameSprite.RenderQuad(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,42,41,this.fBac / 6),pas.GameBase.TGameColor.New(0,1,0,1.0));
+      pas.GameSprite.RenderQuad(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,41,40,this.fNau / 1),pas.GameBase.TGameColor.New(0,0,1,1.0));
     };
     this.Update = function (AGame, ATimeMS) {
       var $Self = this;
       var fMoveDiff = pas.GameMath.TPVector.$new();
       var fMoveLen = 0.0;
       var fMaxMove = 0.0;
+      var delta = 0.0;
       function TestTravel(AX, AY, ACorrection) {
         var sec = null;
         if (pas.ldmap.Map.HasSector(pas.ldmap.Map.fCurrentSector.fX + AX,pas.ldmap.Map.fCurrentSector.fY + AY)) {
@@ -5091,16 +5273,23 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
         };
       };
       pas.GameBase.TGameElement.Update.call(this,AGame,ATimeMS);
+      delta = (ATimeMS / 1000) - this.fTime;
+      if (this.GetAlive()) {
+        if (this.fHP < this.GetMaxHP()) this.fHP = this.fHP + (delta * pas.ldconfig.Config.HealingFactor * this.GetMaxHP());
+        if (this.fHP > this.GetMaxHP()) this.fHP = this.GetMaxHP();
+        this.fBac = this.fBac - (delta * pas.ldconfig.Config.BacLowering);
+        if (this.fBac < 0) this.fBac = 0;
+      };
       this.fTime = ATimeMS / 1000;
       if (this.fAttacking) if ((this.fTime - this.fAttackTime) >= this.fSprite.GetAnimation(this.fAnimation).fLooptime) {
         this.fAttacking = false;
         this.fAnimation = "idle";
-        $mod.DamageAt($Self,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.fBaseDamage);
+        $mod.DamageAt($Self,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.GetDamage());
       };
       if (!this.fAttacking) {
         fMoveDiff.$assign(this.fTarget.Sub(this.fPosition));
         fMoveLen = fMoveDiff.LengthSqr();
-        fMaxMove = (this.fTime - this.fLastTime) * this.fSpeed;
+        fMaxMove = (this.fTime - this.fLastTime) * this.GetSpeed();
         if (pas.System.Sqr$1(fMaxMove) >= fMoveLen) {
           this.fPosition.$assign(this.fTarget);
           this.fAnimation = "idle";
@@ -5131,6 +5320,13 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       this.fPosition.$assign(pas.GameMath.TPVector.New(AX,AY,0));
       return this;
     };
+    this.DrinkBeer = function (AStrength) {
+      this.fBac = this.fBac + AStrength;
+    };
+    this.DealDamage = function (ADamage) {
+      this.fHP = this.fHP - ADamage;
+      if (this.fHP < 0) this.fHP = 0;
+    };
     this.TriggerAttack = function () {
       var Result = false;
       if (this.fAttacking) return false;
@@ -5142,6 +5338,8 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       return Result;
     };
   });
+  this.MaxBAC = 6;
+  this.MaxNau = 1;
   this.SectorMax = 0.0;
   this.Player = null;
   this.King = null;
@@ -5157,6 +5355,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
     var sqrDist = 0.0;
     var ch = null;
     var o = undefined;
+    var oo = null;
     sqrDist = pas.System.Sqr$1(pas.ldconfig.Config.DamageRange);
     ch = $mod.Characters.filter(function (el, idx, arr) {
       var Result = false;
@@ -5165,7 +5364,13 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
     });
     for (var $in = ch, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
       o = $in[$l];
-      pas.System.Writeln("Dealing damage to ",rtl.getObject(o).fActor.GetKey());
+      rtl.getObject(o).DealDamage(ADamage);
+      oo = rtl.getObject(o);
+      if (oo !== $mod.Player) {
+        if (oo.fActor.HasComponent(pas.ldai.KingBehavior)) pas.ldai.KingBehavior.AddAnnoyance(oo.fActor,AGiver.fActor,ADamage * pas.ldconfig.Config.DamageAnnoyanceRatio);
+        if (oo.fActor.HasComponent(pas.ldai.GuardBehavior)) pas.ldai.GuardBehavior.AddAnnoyance(oo.fActor,AGiver.fActor,ADamage * pas.ldconfig.Config.DamageAnnoyanceRatio);
+        if (oo.fActor.HasComponent(pas.ldai.FarmerBehavior)) pas.ldai.FarmerBehavior.AddAnnoyance(oo.fActor,AGiver.fActor,ADamage * pas.ldconfig.Config.DamageAnnoyanceRatio);
+      };
     };
   };
   this.SpawnCharacter = function (AName, AType, ASector, AX, AY) {
@@ -5179,6 +5384,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
   };
   this.RegisterComponent = function (AName, AType) {
     var Result = null;
+    if ($mod.Behaviors === null) $mod.Behaviors = new Map();
     Result = pas.ECS.EntitySystem.RegisterComponent(AType);
     $mod.Behaviors.set(AName,Result);
     return Result;
@@ -5198,6 +5404,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       var beh = undefined;
       cfg = pas.ldconfig.Config.Characters.get(AType);
       AChar.fHP = rtl.getNumber(cfg["hp"]);
+      AChar.fBaseHP = rtl.getNumber(cfg["hp"]);
       AChar.fSpeed = rtl.getNumber(cfg["speed"]);
       AChar.fBaseDamage = rtl.getNumber(cfg["damage"]);
       AChar.fAttackSound = pas.ldsounds.GetSound("" + cfg["attacksound"]);
@@ -5214,20 +5421,19 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       Result = pas.GameSprite.GetSprite(spriteName);
       return Result;
     };
-    $impl.GetCharRect = function (ACenter, AWidth, AHeight) {
+    $impl.GetCharRect = function (ACenter, AWidth, AHeight, YOffset, XScale) {
       var Result = rtl.arraySetLength(null,pas.GameMath.TPVector,4);
       Result[0].$assign(ACenter.Add(pas.GameMath.TPVector.New(-AWidth / 2,0,AHeight)));
-      Result[1].$assign(ACenter.Add(pas.GameMath.TPVector.New(AWidth / 2,0,AHeight)));
-      Result[2].$assign(ACenter.Add(pas.GameMath.TPVector.New(AWidth / 2,0,0)));
-      Result[3].$assign(ACenter.Add(pas.GameMath.TPVector.New(-AWidth / 2,0,0)));
+      Result[1].$assign(ACenter.Add(pas.GameMath.TPVector.New((-AWidth / 2) + (AWidth * XScale),0,AHeight)));
+      Result[2].$assign(ACenter.Add(pas.GameMath.TPVector.New((-AWidth / 2) + (AWidth * XScale),0,YOffset)));
+      Result[3].$assign(ACenter.Add(pas.GameMath.TPVector.New(-AWidth / 2,0,YOffset)));
       return Result;
     };
   };
   $mod.$init = function () {
     $mod.Characters = new Array();
-    $mod.Behaviors = new Map();
   };
-},["ldmap","ldsounds","ldconfig"]);
+},["ldai","ldmap","ldsounds","ldconfig"]);
 rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase","GameSprite","GameMath","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
@@ -5839,144 +6045,6 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     $mod.Map = $mod.TLDMap.$create("Create$2");
   };
 },["ldactor"]);
-rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","SysUtils","JS"],function () {
-  "use strict";
-  var $mod = this;
-  this.TNPCState = {"0": "npcDead", npcDead: 0, "1": "npcAttacking", npcAttacking: 1, "2": "npcAttackMove", npcAttackMove: 2, "3": "npcIdle", npcIdle: 3};
-  this.TIdlingState = {"0": "isRumaging", isRumaging: 0};
-  rtl.createClass(this,"TNPCBehavior",pas.ECS.TECComponent,function () {
-    this.DoAttack = function (AEntity, ATarget) {
-      var diff = pas.GameMath.TPVector.$new();
-      var data = null;
-      var dist = 0.0;
-      data = this.GetData(AEntity);
-      diff.$assign(ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition));
-      dist = diff.LengthSqr();
-      if (dist < 100) {
-        AEntity.fCharacter.TriggerAttack()}
-       else AEntity.fCharacter.fTarget.$assign(ATarget.fCharacter.fPosition);
-    };
-    this.Distance = function (AEntity, ATarget) {
-      var Result = 0.0;
-      Result = ATarget.fCharacter.fPosition.Sub(AEntity.fCharacter.fPosition).Length();
-      return Result;
-    };
-    this.Annoyance = function (AEntity, ATarget) {
-      var Result = 0.0;
-      var ann = null;
-      Result = 0;
-      ann = this.GetData(AEntity).get("annoyances");
-      if (ann.has(ATarget.GetKey())) Result = rtl.getNumber(ann.get(ATarget.GetKey()));
-      return Result;
-    };
-    this.WantsToAttack = function (AEntity, ATarget) {
-      var Result = false;
-      Result = false;
-      if (AEntity === ATarget) return false;
-      if (AEntity.fCharacter.fSector !== ATarget.fCharacter.fSector) return false;
-      if (ATarget.fCharacter === pas.ldactor.Player) {
-        Result = (this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.PlayerAnnoyanceLevel) && (this.Distance(AEntity,ATarget) < pas.ldconfig.Config.PlayerAttackRange)}
-       else if (ATarget.fCharacter === pas.ldactor.King) Result = this.Annoyance(AEntity,ATarget) >= pas.ldconfig.Config.KingAnnoyanceLevel;
-      return Result;
-    };
-    this.Init = function (AEntity) {
-      var data = null;
-      pas.ECS.TECComponent.Init.call(this,AEntity);
-      data = this.GetData(AEntity);
-      data.set("state",3);
-      data.set("annoyances",new Map());
-    };
-    this.Update = function (AEntity, ADeltaMS, ATimeMS) {
-      var data = null;
-      var annoyances = null;
-      var k = "";
-      var coolDown = 0.0;
-      pas.ECS.TECComponent.Update.call(this,AEntity,ADeltaMS,ATimeMS);
-      data = this.GetData(AEntity);
-      coolDown = pas.ldconfig.Config.AnnoyanceCooldown;
-      annoyances = data.get("annoyances");
-      for (k in annoyances.keys()) annoyances.set(k,rtl.getNumber(annoyances.get(k)) * coolDown * ADeltaMS);
-      if (!AEntity.fCharacter.GetAlive()) {
-        data.set("state",0)}
-       else if (this.WantsToAttack(AEntity,pas.ldactor.Player.fActor)) {
-        data.set("state",1);
-        data.set("target",pas.ldactor.Player);
-        this.DoAttack(AEntity,pas.ldactor.Player.fActor);
-      } else if (this.WantsToAttack(AEntity,pas.ldactor.King.fActor)) {
-        data.set("state",1);
-        data.set("target",pas.ldactor.King);
-        this.DoAttack(AEntity,pas.ldactor.King.fActor);
-      } else data.set("state",3);
-    };
-  });
-  rtl.createClass(this,"THomeTileBehavior",this.TNPCBehavior,function () {
-    this.UpdateInterval = 5;
-    this.Init = function (AEntity) {
-      var ent = null;
-      $mod.TNPCBehavior.Init.call(this,AEntity);
-      ent = this.GetData(AEntity);
-      ent.set("home-state",0);
-      ent.set("home-sector",0);
-      ent.set("home-x",0);
-      ent.set("home-y",0);
-      ent.set("last-update",-100000.0);
-    };
-    this.Update = function (AEntity, ADeltaMS, ATimeMS) {
-      var ent = null;
-      var last_update = 0.0;
-      var x = 0.0;
-      var y = 0.0;
-      var char = null;
-      var newCoord = pas.GameMath.TPVector.$new();
-      var state = 0;
-      var npcState = 0;
-      ent = this.GetData(AEntity);
-      char = AEntity.fCharacter;
-      $mod.TNPCBehavior.Update.call(this,AEntity,ADeltaMS,ATimeMS);
-      npcState = ent.get("state");
-      if (npcState === 3) {
-        state = ent.get("home-state");
-        var $tmp = state;
-        if ($tmp === 0) {
-          last_update = rtl.getNumber(ent.get("last-update"));
-          if ((ATimeMS - last_update) > (5 * 1000)) {
-            x = rtl.getNumber(ent.get("home-x"));
-            y = rtl.getNumber(ent.get("home-y"));
-            newCoord.$assign(pas.GameMath.TPVector.New(((x + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,((y + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,0));
-            char.fTarget.$assign(newCoord);
-            if (char.fVisible && $mod.TFarmerBehavior.isPrototypeOf(this)) pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("rake"),0.3,false);
-            ent.set("last-update",ATimeMS - (1000 * Math.random()));
-          };
-        };
-      };
-    };
-    this.SetHomeTile = function (AEntity, ASector, AX, AY) {
-      var ent = null;
-      ent = this.GetData(AEntity);
-      ent.set("home-sector",ASector);
-      ent.set("home-x",AX);
-      ent.set("home-y",AY);
-    };
-  });
-  rtl.createClass(this,"TFarmerBehavior",this.THomeTileBehavior,function () {
-  });
-  rtl.createClass(this,"TPlayerBehavior",pas.ECS.TECComponent,function () {
-  });
-  rtl.createClass(this,"TGuardBehavior",this.THomeTileBehavior,function () {
-  });
-  rtl.createClass(this,"TKingBehavior",this.THomeTileBehavior,function () {
-  });
-  this.FarmerBehavior = null;
-  this.GuardBehavior = null;
-  this.KingBehavior = null;
-  this.PlayerBehavior = null;
-  $mod.$init = function () {
-    $mod.FarmerBehavior = pas.ldactor.RegisterComponent("farmer",$mod.THomeTileBehavior);
-    $mod.GuardBehavior = pas.ldactor.RegisterComponent("guard",$mod.TGuardBehavior);
-    $mod.KingBehavior = pas.ldactor.RegisterComponent("king",$mod.TKingBehavior);
-    $mod.PlayerBehavior = pas.ldactor.RegisterComponent("player",$mod.TPlayerBehavior);
-  };
-},["GameBase","ldsounds"]);
 rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","resources","guibase","guictrls","GameBase","gameaudio","GameMath","GameSprite","ECS","GameFont","ldmap","ldactor","ldconfig","ldai","ldsounds"],function () {
   "use strict";
   var $mod = this;
@@ -6017,6 +6085,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.DialogTarget = undefined;
       this.DialogStack = null;
       this.DialogCfg = null;
+      this.StatusLabel = null;
       this.MainGUI = null;
       this.MainGuiPanel = null;
       this.InvPanel = null;
@@ -6038,6 +6107,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.DialogOptions = undefined;
       this.DialogStack = undefined;
       this.DialogCfg = undefined;
+      this.StatusLabel = undefined;
       this.MainGUI = undefined;
       this.MainGuiPanel = undefined;
       this.InvPanel = undefined;
@@ -6195,6 +6265,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       bb.fVisible = true;
     };
     this.ClickInventory = function (AItem) {
+      var s = 0.0;
       var $tmp = this.fCurrentAction;
       if ($tmp === 5) {
         this.RemoveInventory(AItem.fName,1);
@@ -6202,8 +6273,16 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         this.fAudio.Play(pas.resources.TResources.AddSound("assets\/Audio\/proc_plop.m4a"),1,false);
       } else if ($tmp === 3) {
         var $tmp1 = AItem.fName;
-        if (($tmp1 === "icon-beer-reg") || ($tmp1 === "icon-beer-med") || ($tmp1 === "icon-beer-strong") || ($tmp1 === "icon-beer-suicide")) {
-          this.WriteStatus("Drink " + AItem.fName + "!");
+        if ($tmp1 === "icon-beer-reg") {
+          s = 0.5}
+         else if ($tmp1 === "icon-beer-med") {
+          s = 1.0}
+         else if ($tmp1 === "icon-beer-strong") {
+          s = 2.0}
+         else if ($tmp1 === "icon-beer-suicide") s = 5;
+        var $tmp2 = AItem.fName;
+        if (($tmp2 === "icon-beer-reg") || ($tmp2 === "icon-beer-med") || ($tmp2 === "icon-beer-strong") || ($tmp2 === "icon-beer-suicide")) {
+          pas.ldactor.Player.DrinkBeer(s);
           pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("drink"),0.8,false);
           this.RemoveInventory(AItem.fName,1);
         } else {
@@ -6214,6 +6293,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       };
     };
     this.WriteStatus = function (AMessage) {
+      this.StatusLabel.SetCaption(AMessage);
+      this.StatusLabel.fColor.$assign(pas.GameBase.TGameColor.New(1,1,1,1.0));
       pas.System.Writeln(AMessage);
     };
     this.FindBBsInSector = function () {
@@ -6457,6 +6538,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         btn.fTag = AAction;
         btn.fOnClick = rtl.createCallback($Self,"SetAction");
       };
+      this.StatusLabel = pas.guictrls.TGUILabel.$create("Create$3");
+      this.MainGUI.AddChild(this.StatusLabel);
+      this.StatusLabel.SetFont("sans");
+      this.StatusLabel.SetFontSize(30);
+      this.StatusLabel.SetCaption("");
+      this.StatusLabel.fColor.$assign(pas.GameBase.TGameColor.Transparent());
+      this.StatusLabel.fHitTestVisible = false;
       PanelBG.$assign(pas.GameBase.TGameColor.New(0.4,0.4,0.4,1.0));
       this.MainGUI.fPosition.$assign(pas.GameMath.TPVector.New(0,0,1));
       this.MainGuiPanel = pas.guictrls.TGUIPanel.$create("Create$3");
@@ -6486,6 +6574,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.AddInventory("icon-beer-reg",1);
       this.AddInventory("icon-bucket",1);
       this.AddInventory("icon-scythe",1);
+      this.AddInventory("icon-beer-strong",10);
       ActionPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       ActionPanel.SetSize(352,2,350,200 - 2);
       ActionPanel.fBackGround.$assign(PanelBG);
@@ -6511,9 +6600,14 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.fCurrentMusic.fOnEnd = rtl.createCallback(this,"MusicEnded");
     };
     this.Update = function (ATimeMS) {
+      var x = pas.GameBase.TGameColor.$new();
       pas.GameBase.TGameBase.Update.call(this,ATimeMS);
-      $mod.fTime = ATimeMS;
       this.InvGoldLabel.SetCaption(pas.SysUtils.Format("Gold: %d",pas.System.VarRecs(0,pas.ldactor.Player.fGold)));
+      x.$assign(this.StatusLabel.fColor);
+      x.A = x.A - ((ATimeMS - $mod.fTime) / 1000);
+      if (x.A < 0) x.A = 0;
+      this.StatusLabel.fColor.$assign(x);
+      $mod.fTime = ATimeMS;
     };
     this.GetElements = function () {
       var Result = null;
