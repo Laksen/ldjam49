@@ -165,10 +165,13 @@ procedure TLD49Game.ClickDialog(AIndex: longint);
 var
   curr, selected: TJSObject;
 
-  procedure Consume(agrain, ahops: integer);
+  procedure Consume(agrain, ahops, awater: integer);
   begin
     Inventory.RemoveElements(getsprite('icon-barley'), agrain);
     Inventory.RemoveElements(getsprite('icon-hops'), ahops);
+
+    Inventory.RemoveElements(getsprite('icon-full-bucket'), awater);
+    Inventory.AddElements(getsprite('icon-bucket'), awater);
   end;
 
 begin
@@ -205,17 +208,17 @@ begin
 
         'brew_pilsner':
           begin
-            Consume(10, 3);
+            Consume(10, 3, 1);
             Inventory.AddElements(GetSprite('icon-beer-reg'), 2);
           end;
         'brew_ale':
           begin
-            Consume(15, 4);
+            Consume(15, 4, 1);
             Inventory.AddElements(GetSprite('icon-beer-med'), 2);
           end;
         'brew_porter':
           begin
-            Consume(30, 10);
+            Consume(30, 10, 1);
             Inventory.AddElements(GetSprite('icon-beer-strong'), 2);
           end;
       end;
@@ -265,8 +268,9 @@ begin
 
     if ent2['beer']<>undefined then avail:=avail and HasBeer and WantsBeer(DialogTarget);
 
-    if ent2['grain']<>undefined then avail:=avail and (Inventory.ElementCount(GetSprite('icon-barley'))>integer(ent2['grain']));
-    if ent2['hops']<>undefined then avail:=avail and (Inventory.ElementCount(GetSprite('icon-hops'))>integer(ent2['hops']));
+    if ent2['grain']<>undefined then avail:=avail and (Inventory.ElementCount(GetSprite('icon-barley'))>=integer(ent2['grain']));
+    if ent2['hops']<>undefined  then avail:=avail and (Inventory.ElementCount(GetSprite('icon-hops'))>=integer(ent2['hops']));
+    if ent2['water']<>undefined then avail:=avail and (Inventory.ElementCount(GetSprite('icon-full-bucket'))>=integer(ent2['water']));
 
     if avail then
       DialogOptions.AddItem(idx, string(ent2['option']));
