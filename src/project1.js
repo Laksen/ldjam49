@@ -2679,11 +2679,13 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
       this.fFadeTime = 0.0;
       this.fLooping = false;
       this.fAudio = null;
+      this.fOnEnd = null;
       this.fState = 0;
       this.fVolume = 0.0;
     };
     this.$final = function () {
       this.fAudio = undefined;
+      this.fOnEnd = undefined;
       pas.System.TObject.$final.call(this);
     };
     this.Create$1 = function (ASource, AVolume, ALooping) {
@@ -2701,6 +2703,13 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
       this.fAudio = null;
       pas.System.TObject.Destroy.call(this);
     };
+    this.FadeOut = function (AStartTime, ATime) {
+      if (this.fState === 0) {
+        this.fState = 1;
+        this.fFadeStart = AStartTime;
+        this.fFadeTime = ATime;
+      };
+    };
     this.Update = function (ATime) {
       var newVolume = 0.0;
       if (this.fState === 1) {
@@ -2709,7 +2718,10 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
           this.fState = 2;
           this.fAudio.volume = 0;
         } else this.fAudio.volume = newVolume;
-      } else if (this.fAudio.ended) this.fState = 2;
+      } else if (this.fAudio.ended) {
+        this.fState = 2;
+        if (this.fOnEnd !== null) this.fOnEnd(this);
+      };
     };
   });
   rtl.createClass(this,"TGameAudio",pas.System.TObject,function () {
@@ -2730,8 +2742,23 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
       return this;
     };
     this.Play = function (ASource, AVolume, ALooping) {
-      if (ASource === null) return;
-      this.fSources.Add($mod.TGameAudioSource.$create("Create$1",[ASource,AVolume,ALooping]));
+      var Result = null;
+      if (ASource === null) return Result;
+      Result = $mod.TGameAudioSource.$create("Create$1",[ASource,AVolume,ALooping]);
+      this.fSources.Add(Result);
+      return Result;
+    };
+    this.FadeAll = function (ACurrentTimeMS, AFadeTimeMS) {
+      var el = undefined;
+      var $in = this.fSources.GetEnumerator();
+      try {
+        while ($in.MoveNext()) {
+          el = $in.GetCurrent();
+          rtl.getObject(el).FadeOut(ACurrentTimeMS,AFadeTimeMS);
+        }
+      } finally {
+        $in = rtl.freeLoc($in)
+      };
     };
     this.Update = function (ATimeMS) {
       var el = undefined;
@@ -5042,15 +5069,25 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       pas.GameSprite.RenderFrame(GL,AViewport,$impl.GetCharRect(pas.GameMath.TPVector.$clone(this.fPosition),40,40),frame);
     };
     this.Update = function (AGame, ATimeMS) {
+      var $Self = this;
       var fMoveDiff = pas.GameMath.TPVector.$new();
       var fMoveLen = 0.0;
       var fMaxMove = 0.0;
+      function TestTravel(AX, AY, ACorrection) {
+        var sec = null;
+        if (pas.ldmap.Map.HasSector(pas.ldmap.Map.fCurrentSector.fX + AX,pas.ldmap.Map.fCurrentSector.fY + AY)) {
+          sec = pas.ldmap.Map.GetSector(pas.ldmap.Map.fCurrentSector.fX + AX,pas.ldmap.Map.fCurrentSector.fY + AY);
+          $Self.fSector = sec.fID;
+          pas.ldmap.Map.SetCurrentSector(sec);
+          $Self.fPosition.$assign($Self.fPosition.Add(ACorrection));
+        };
+      };
       pas.GameBase.TGameElement.Update.call(this,AGame,ATimeMS);
       this.fTime = ATimeMS / 1000;
       if (this.fAttacking) if ((this.fTime - this.fAttackTime) >= this.fSprite.GetAnimation(this.fAnimation).fLooptime) {
         this.fAttacking = false;
         this.fAnimation = "idle";
-        $mod.DamageAt(this,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.fBaseDamage);
+        $mod.DamageAt($Self,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.fBaseDamage);
       };
       if (!this.fAttacking) {
         fMoveDiff.$assign(this.fTarget.Sub(this.fPosition));
@@ -5062,6 +5099,14 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
         } else if (fMoveLen > 0) {
           this.fAnimation = "walk";
           this.fPosition.$assign(this.fPosition.Add(fMoveDiff.Scale(fMaxMove / Math.sqrt(fMoveLen))));
+        };
+        if ($Self === $mod.Player) {
+          if (this.fPosition.X >= $mod.SectorMax) {
+            TestTravel(1,0,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(-$mod.SectorMax,0,0)))}
+           else if (this.fPosition.X < 0) TestTravel(-1,0,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New($mod.SectorMax,0,0)));
+          if (this.fPosition.Y >= $mod.SectorMax) {
+            TestTravel(0,1,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(0,-$mod.SectorMax,0)))}
+           else if (this.fPosition.Y < 0) TestTravel(0,-1,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(0,$mod.SectorMax,0)));
         };
         this.fPosition.$assign(this.fPosition.Clamp(pas.GameMath.TPVector.New(0,0,0),pas.GameMath.TPVector.New($mod.SectorMax,$mod.SectorMax,0)));
       };
@@ -5174,7 +5219,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
     $mod.Characters = new Array();
     $mod.Behaviors = new Map();
   };
-},["ldsounds","ldconfig"]);
+},["ldmap","ldsounds","ldconfig"]);
 rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase","GameSprite","GameMath","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
@@ -5790,7 +5835,7 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
   "use strict";
   var $mod = this;
   this.TNPCState = {"0": "npcDead", npcDead: 0, "1": "npcAttacking", npcAttacking: 1, "2": "npcAttackMove", npcAttackMove: 2, "3": "npcIdle", npcIdle: 3};
-  this.TFarmerState = {"0": "fsFarming", fsFarming: 0};
+  this.TIdlingState = {"0": "isRumaging", isRumaging: 0};
   rtl.createClass(this,"TNPCBehavior",pas.ECS.TECComponent,function () {
     this.DoAttack = function (AEntity, ATarget) {
       var diff = pas.GameMath.TPVector.$new();
@@ -5891,7 +5936,7 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
             y = rtl.getNumber(ent.get("home-y"));
             newCoord.$assign(pas.GameMath.TPVector.New(((x + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,((y + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,0));
             char.fTarget.$assign(newCoord);
-            if (char.fVisible) pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("rake"),0.3,false);
+            if (char.fVisible && $mod.TFarmerBehavior.isPrototypeOf(this)) pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("rake"),0.3,false);
             ent.set("last-update",ATimeMS - (1000 * Math.random()));
           };
         };
@@ -5905,9 +5950,11 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
       ent.set("home-y",AY);
     };
   });
+  rtl.createClass(this,"TFarmerBehavior",this.THomeTileBehavior,function () {
+  });
   rtl.createClass(this,"TPlayerBehavior",pas.ECS.TECComponent,function () {
   });
-  rtl.createClass(this,"TGuardBehavior",this.TNPCBehavior,function () {
+  rtl.createClass(this,"TGuardBehavior",this.THomeTileBehavior,function () {
   });
   rtl.createClass(this,"TKingBehavior",this.THomeTileBehavior,function () {
   });
@@ -5968,6 +6015,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvGoldLabel = null;
       this.Inventory = null;
       this.Actions = rtl.arraySetLength(null,null,6);
+      this.fCurrentTrack = 0;
+      this.Tracks = rtl.arraySetLength(null,null,1);
     };
     this.$final = function () {
       this.StartSector = undefined;
@@ -5986,6 +6035,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvGoldLabel = undefined;
       this.Inventory = undefined;
       this.Actions = undefined;
+      this.Tracks = undefined;
       pas.GameBase.TGameBase.$final.call(this);
     };
     this.SetAction = function (ATarget, APosition) {
@@ -6022,7 +6072,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           this.TriggerDialog$1(this.DialogCfg["" + selected["subdialog"]],true);
         } else if (selected["trigger"] != undefined) {
           this.State = 1;
-          this.DialogStack.splice(this.DialogStack.length - 1);
+          this.DialogStack = new Array();
           var $tmp = "" + selected["trigger"];
           if ($tmp === "buy_harvest") {}
           else if ($tmp === "buy_beer") {}
@@ -6062,7 +6112,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         if (avail) this.DialogOptions.AddItem(idx,"" + ent2["option"]);
         idx += 1;
       };
-      this.DialogOptions.AddItem(-1,"Back");
+      if (ADialog["no_exit"] == undefined) this.DialogOptions.AddItem(-1,"Back");
     };
     var DW = 800;
     var DH = 600;
@@ -6351,6 +6401,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
               var $tmp1 = "" + spawn;
               if ($tmp1 === "farmer") {
                 pas.ldai.FarmerBehavior.SetHomeTile(ch.fActor,sec.fID,x,y)}
+               else if ($tmp1 === "guard") {
+                pas.ldai.GuardBehavior.SetHomeTile(ch.fActor,sec.fID,x,y)}
                else if ($tmp1 === "player") {
                 this.StartSector = sec;
                 pas.ldactor.Player = ch;
@@ -6422,8 +6474,17 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.SetCurrentAction(1);
       this.SetCurrentAction(0);
     };
+    this.MusicEnded = function (ASrc) {
+      this.fCurrentTrack = (this.fCurrentTrack + 1) % 1;
+      this.fAudio.Play(this.Tracks[this.fCurrentTrack],0.4,false).fOnEnd = rtl.createCallback(this,"MusicEnded");
+    };
+    this.StartMusic = function () {
+      this.fCurrentTrack = 0;
+      this.fAudio.Play(this.Tracks[0],0.4,false).fOnEnd = rtl.createCallback(this,"MusicEnded");
+    };
     this.Update = function (ATimeMS) {
       pas.GameBase.TGameBase.Update.call(this,ATimeMS);
+      $mod.fTime = ATimeMS;
       this.InvGoldLabel.SetCaption(pas.SysUtils.Format("Gold: %d",pas.System.VarRecs(0,pas.ldactor.Player.fGold)));
     };
     this.GetElements = function () {
@@ -6450,7 +6511,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         this.SetCurrentAction(3)}
        else if ($tmp === "Digit5") {
         this.SetCurrentAction(4)}
-       else if ($tmp === "Digit6") this.SetCurrentAction(5);
+       else if ($tmp === "Digit6") {
+        this.SetCurrentAction(5)}
+       else if ($tmp === "KeyM") this.fAudio.FadeAll($mod.fTime,400);
     };
     this.DoClick = function (AX, AY, AButtons) {
       var p = pas.GameMath.TPVector.$new();
@@ -6458,8 +6521,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.GameBase.TGameBase.DoClick.call(this,AX,AY,AButtons);
       var $tmp = this.State;
       if ($tmp === 0) {
-        this.State = 1}
-       else if ($tmp === 1) {
+        this.State = 1;
+        this.StartMusic();
+      } else if ($tmp === 1) {
         this.MainGUI.DoClick(pas.guibase.TGUIPoint.$clone(pas.guibase.TGUIPoint.Create(AX,AY)),{get: function () {
             return h;
           }, set: function (v) {
@@ -6537,7 +6601,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddString("assets\/dialog.json");
       pas.resources.TResources.AddString("assets\/config.json");
       pas.resources.TResources.AddString("assets\/map.json");
-      pas.ldsounds.AddSound("mus0",pas.resources.TResources.AddSound("assets\/Audio\/mus_song1.mp3"));
+      this.Tracks[0] = pas.resources.TResources.AddSound("assets\/Audio\/mus_song1.mp3");
       pas.ldsounds.AddSound("rake",pas.resources.TResources.AddSound("assets\/Audio\/proc_rake.m4a"));
       pas.ldsounds.AddSound("drink",pas.resources.TResources.AddSound("assets\/Audio\/proc_drinkaah.m4a"));
       pas.resources.TResources.AddSound("assets\/Audio\/proc_burp.m4a");
@@ -6599,6 +6663,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
     return Result;
   };
   this.GUIHeight = 200;
+  this.fTime = 0.0;
   $mod.$main = function () {
     pas.GameBase.RunGame($mod.TLD49Game);
   };

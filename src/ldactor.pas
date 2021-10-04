@@ -91,6 +91,7 @@ procedure ShowCharacters(ASector: longint);
 implementation
 
 uses
+  ldmap,
   ldsounds,
   ldconfig;
 
@@ -214,6 +215,22 @@ procedure TLDCharacter.Update(AGame: TGameBase; ATimeMS: double);
 var
   fMoveDiff: TPVector;
   fMoveLen, fMaxMove: Double;
+
+  procedure TestTravel(AX,AY: integer; ACorrection: TPVector);
+  var
+    sec: TLDSector;
+  begin
+    if Map.HasSector(Map.CurrentSector.X+AX, map.CurrentSector.Y+ay) then
+    begin
+      sec:=Map.GetSector(Map.CurrentSector.X+AX, map.CurrentSector.Y+ay);
+
+      fSector:=sec.ID;
+
+      Map.SetCurrentSector(sec);
+      Position:=position.Add(ACorrection);
+    end;
+  end;
+
 begin
   inherited Update(AGame, ATimeMS);
   fTime:=ATimeMS/1000;
@@ -243,6 +260,19 @@ begin
     begin
       fAnimation:='walk';
       Position:=Position.Add(fMoveDiff.Scale(fMaxMove/sqrt(fMoveLen)));
+    end;
+
+    if Self=Player then
+    begin
+      if position.X>=SectorMax then
+        TestTravel(1,0, TPVector.New(-SectorMax,0))
+      else if position.X<0 then
+        TestTravel(-1,0, TPVector.New(SectorMax,0));
+
+      if position.Y>=SectorMax then
+        TestTravel(0, 1, TPVector.New(0,-SectorMax))
+      else if position.Y<0 then
+        TestTravel(0,-1, TPVector.New(0,SectorMax));
     end;
 
     Position:=Position.Clamp(TPVector.New(0,0), TPVector.new(SectorMax,SectorMax));

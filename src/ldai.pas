@@ -12,7 +12,7 @@ uses
 
 type
   TNPCState = (npcDead, npcAttacking, npcAttackMove, npcIdle);
-  TFarmerState = (fsFarming);
+  TIdlingState = (isRumaging);
 
   TNPCBehavior = class(TECComponent)
   private
@@ -45,7 +45,7 @@ type
   TPlayerBehavior = class(TECComponent)
   end;
 
-  TGuardBehavior = class(TNPCBehavior)
+  TGuardBehavior = class(THomeTileBehavior)
   end;
 
   TKingBehavior = class(THomeTileBehavior)
@@ -178,7 +178,7 @@ begin
   inherited Init(AEntity);
   ent:=GetData(AEntity);
 
-  ent.&set('home-state', fsFarming);
+  ent.&set('home-state', isRumaging);
   ent.&set('home-sector', 0);
   ent.&set('home-x', 0);
   ent.&set('home-y', 0);
@@ -191,7 +191,7 @@ var
   last_update, x, y: Double;
   char: TLDCharacter;
   newCoord: TPVector;
-  state: TFarmerState;
+  state: TIdlingState;
   npcState: TNPCState;
 begin
   ent:=GetData(AEntity);
@@ -203,10 +203,10 @@ begin
 
   if npcState=npcIdle then
   begin
-    state:=TFarmerState(ent.get('home-state'));
+    state:=TIdlingState(ent.get('home-state'));
 
     case state of
-      fsFarming:
+      isRumaging:
         begin
           last_update:=double(ent.get('last-update'));
           if (ATimeMS-last_update)>(UpdateInterval*1000) then
@@ -217,7 +217,7 @@ begin
             newCoord:=TPVector.New((x+random)*Config.SectorSize*0.99+0.01, (y+random)*Config.SectorSize*0.99+0.01);
             char.Target:=newCoord;
 
-            if char.Visible then
+            if char.Visible and (self is TFarmerBehavior) then
               Game.Audio.Play(GetSound('rake'), 0.3);
 
             ent.&set('last-update', ATimeMS-1000*random);

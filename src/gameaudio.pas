@@ -11,12 +11,17 @@ uses
 type
   TGameAudioPlayState = (psNormal, psFadeout, psDone);
 
+  TGameAudioSource = class;
+
+  TGameAudioEnded = procedure(ASrc: TGameAudioSource) of object;
+
   TGameAudioSource = class
   private
     fFadeStart,
     fFadeTime: double;
     fLooping: Boolean;
     fAudio: TJSHTMLAudioElement;
+    fOnEnd: TGameAudioEnded;
     fState: TGameAudioPlayState;
     fVolume: double;
   public
@@ -28,6 +33,7 @@ type
 
     property Volume: double read fVolume write fVolume;
     property State: TGameAudioPlayState read fState;
+    property OnEnd: TGameAudioEnded read fOnEnd write fOnEnd;
   end;
 
   TGameAudio = class
@@ -37,7 +43,7 @@ type
   public
     constructor Create;
 
-    procedure Play(ASource: TJSHTMLAudioElement; AVolume: double; ALooping: boolean=false);
+    function Play(ASource: TJSHTMLAudioElement; AVolume: double; ALooping: boolean=false): TGameAudioSource;
     procedure FadeAll(ACurrentTimeMS, AFadeTimeMS: double);
 
     procedure Update(ATimeMS: double);
@@ -57,11 +63,12 @@ begin
   fSources:=TList.Create;
 end;
 
-procedure TGameAudio.Play(ASource: TJSHTMLAudioElement; AVolume: double; ALooping: boolean);
+function TGameAudio.Play(ASource: TJSHTMLAudioElement; AVolume: double; ALooping: boolean): TGameAudioSource;
 begin
   if asource=nil then exit;
 
-  fSources.Add(TGameAudioSource.Create(ASource, AVolume, ALooping));
+  result:=TGameAudioSource.Create(ASource, AVolume, ALooping);
+  fSources.Add(result);
 end;
 
 procedure TGameAudio.FadeAll(ACurrentTimeMS, AFadeTimeMS: double);
@@ -153,7 +160,12 @@ begin
       fAudio.volume:=newVolume;
   end
   else if fAudio.Ended then
+  begin
     fState:=psDone;
+
+    if fOnEnd<>nil then
+      fOnEnd(self);
+  end;
 end;
 
 end.

@@ -44,6 +44,52 @@
         ]
     },
 
+    "guard": {
+        "start": "Stand your ground peasant.\nWhat is your business?",
+        "icon": "guard",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": [
+            {
+                "option": "Would you like to buy some delicious beer?",
+                "beer": 1,
+                "subdialog": "guard-illegal"
+            },
+            {
+                "option": "I am merely passing through",
+                "subdialog": "guard-okay"
+            }
+        ]
+    },
+    "guard-okay": {
+        "start": "Okay but watch your back",
+        "icon": "guard",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": [
+            {
+                "option": "Good day",
+                "trigger": "fine"
+            }
+        ]
+    },
+    "guard-illegal": {
+        "start": "Beer is strictly forbidden\nForfeit your contraband or face the kings guard!",
+        "icon": "guard",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": [
+            {
+                "option": "Relax, it is not even mine",
+                "trigger": "confiscation-agree"
+            },
+            {
+                "option": "Over my dead body",
+                "trigger": "confiscation-deny"
+            }
+        ]
+    },
+
     "cauldron": {
         "start": "Hmm, what should we brew today?",
         "icon": "fireplace",
@@ -76,12 +122,19 @@
         "entries": [
             {
                 "option": "Why have their highness outlawed beer?",
-                "trigger": "insolence",
-                "response": ["Dare you question the kings wisdom?",
-                             "We cannot ignore this. Guards"]
-            },
+                "subdialog": "king-angry"
+            }
+        ]
+    },
+    "king-angry": {
+        "start": "Dare you question the kings wisdom?\nWe cannot ignore this. Guards",
+        "icon": "king",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": [
             {
-                
+                "option": "Uh-oh..",
+                "trigger": "king_angry"
             }
         ]
     }

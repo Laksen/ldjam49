@@ -6,7 +6,7 @@
     "Characters": {
         "player": {
             "hp": 100,
-            "speed": 60,
+            "speed": 150,
             "damage": 10,
             "behavior": ["player"],
             "sprite": "player",

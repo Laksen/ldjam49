@@ -97,6 +97,13 @@ type
     procedure LoadMap(const AStr: string);
 
     procedure MakeGUI;
+
+  private
+    fCurrentTrack: longint;
+    Tracks: array[0..0] of TJSHTMLAudioElement;
+
+    procedure MusicEnded(ASrc: TGameAudioSource);
+    procedure StartMusic;
   protected
     procedure Update(ATimeMS: double); override;
     function GetElements: TJSArray; override;
@@ -182,7 +189,7 @@ begin
     begin
       state:=gsMain;
                                                  
-      DialogStack.splice(DialogStack.Length-1);
+      DialogStack:=TJSArray.new;
 
       case string(selected['trigger']) of
         'buy_harvest': ;
@@ -247,7 +254,8 @@ begin
     inc(idx);
   end;
 
-  DialogOptions.AddItem(-1, 'Back');
+  if ADialog['no_exit']=undefined then
+    DialogOptions.AddItem(-1, 'Back');
 end;
 
 procedure TLD49Game.MakeDialog;
@@ -635,6 +643,8 @@ begin
           case string(spawn) of
             'farmer':
               FarmerBehavior.SetHomeTile(ch.Actor, sec.ID, x,y);
+            'guard':
+              GuardBehavior.SetHomeTile(ch.Actor, sec.ID, x,y);
             'player':
               begin
                 StartSector:=sec;
@@ -731,9 +741,25 @@ begin
       SetCurrentAction(aMove);
 end;
 
+procedure TLD49Game.MusicEnded(ASrc: TGameAudioSource);
+begin
+  fCurrentTrack:=(fCurrentTrack+1) mod length(Tracks);
+  Audio.Play(Tracks[fCurrentTrack], 0.4).OnEnd:=@MusicEnded;
+end;
+
+procedure TLD49Game.StartMusic;
+begin
+  fCurrentTrack:=0;
+  Audio.Play(Tracks[0], 0.4).OnEnd:=@MusicEnded;
+end;
+                                            
+var
+  fTime: Double;
+
 procedure TLD49Game.Update(ATimeMS: double);
 begin
   inherited Update(ATimeMS);
+  fTime:=ATimeMS;
   InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);
 
 
@@ -758,6 +784,8 @@ begin
     'Digit4': CurrentAction:=aUse;
     'Digit5': CurrentAction:=aPickUp;
     'Digit6': CurrentAction:=aDrop;
+
+    'KeyM': Audio.FadeAll(fTime, 400);
   end;
 end;
 
@@ -770,7 +798,11 @@ begin
 
   case State of
     gsIntro:
-      State:=gsMain;
+      begin
+        State:=gsMain;
+
+        StartMusic;
+      end;
     gsMain:
       begin
         MainGUI.DoClick(TGUIPoint.Create(ax,ay), h);
@@ -857,7 +889,7 @@ begin
   TResources.AddString('assets/map.json');
 
   // Sounds                                                           
-  AddSound('mus0', TResources.AddSound('assets/Audio/mus_song1.mp3'));
+  Tracks[0]:=TResources.AddSound('assets/Audio/mus_song1.mp3');
 
   AddSound('rake', TResources.AddSound('assets/Audio/proc_rake.m4a'));
   AddSound('drink', TResources.AddSound('assets/Audio/proc_drinkaah.m4a'));
