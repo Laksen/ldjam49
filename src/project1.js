@@ -6256,6 +6256,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       return Result;
     };
     this.DropItem = function (AName, ASector, APosition) {
+      var Result = null;
       var fCurrentTile = null;
       var bb = null;
       fCurrentTile = ASector.GetTileAt(pas.GameMath.TPVector.$clone(APosition));
@@ -6263,6 +6264,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       bb.fPosition.$assign(APosition);
       bb.fIsItem = true;
       bb.fVisible = true;
+      Result = bb;
+      return Result;
     };
     this.ClickInventory = function (AItem) {
       var s = 0.0;
@@ -6507,7 +6510,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
             sec.SetTile$1(x,y,typ);
             for (var $in2 = $mod.iff(o2["items"],new Array()), $l2 = 0, $end2 = rtl.length($in2) - 1; $l2 <= $end2; $l2++) {
               spawn = $in2[$l2];
-              this.DropItem("" + spawn,sec,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New((x + Math.random()) * pas.ldconfig.Config.SectorSize,(y + Math.random()) * pas.ldconfig.Config.SectorSize,0)));
+              this.DropItem("" + spawn,sec,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New((x + Math.random()) * pas.ldconfig.Config.SectorSize,(y + Math.random()) * pas.ldconfig.Config.SectorSize,0))).fVisible = false;
             };
             for (var $in3 = $mod.iff(o2["spawn"],new Array()), $l3 = 0, $end3 = rtl.length($in3) - 1; $l3 <= $end3; $l3++) {
               spawn = $in3[$l3];

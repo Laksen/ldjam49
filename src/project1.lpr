@@ -77,7 +77,7 @@ type
     function HasInventory(ASprite: string; ACount: integer): boolean;
     function RemoveInventory(ASprite: string; ACount: integer): boolean;
 
-    procedure DropItem(AName: string; ASector: TLDSector; APosition: TPVector);
+    function DropItem(AName: string; ASector: TLDSector; APosition: TPVector): TBillboard;
     procedure ClickInventory(AItem: TGameSprite);
   private
     procedure WriteStatus(const AMessage: string);
@@ -341,7 +341,7 @@ begin
   result:=Inventory.RemoveElements(GetSprite(ASprite), acount);
 end;
 
-procedure TLD49Game.DropItem(AName: string; ASector: TLDSector; APosition: TPVector);
+function TLD49Game.DropItem(AName: string; ASector: TLDSector; APosition: TPVector): TBillboard;
 var
   fCurrentTile: TLDSectorTile;
   bb: TBillboard;
@@ -352,6 +352,8 @@ begin
   bb.Position:=APosition;
   bb.IsItem:=true;
   bb.Visible:=true;
+
+  result:=bb;
 end;
 
 procedure TLD49Game.SetAction(ATarget: TGUIElement; const APosition: TGUIPoint);
@@ -684,7 +686,7 @@ begin
         sec.SetTile(x, y, typ);
 
         for spawn in tjsarray(iff(o2['items'], tjsarray.new())) do
-          DropItem(string(spawn), sec, TPVector.new((x+random())*Config.SectorSize, (y+random())*Config.SectorSize));
+          DropItem(string(spawn), sec, TPVector.new((x+random())*Config.SectorSize, (y+random())*Config.SectorSize)).Visible:=false;
 
         for spawn in tjsarray(iff(o2['spawn'], tjsarray.new())) do
         begin
