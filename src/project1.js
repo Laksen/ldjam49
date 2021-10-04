@@ -2677,6 +2677,7 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
       pas.System.TObject.$init.call(this);
       this.fFadeStart = 0.0;
       this.fFadeTime = 0.0;
+      this.fLooping = false;
       this.fAudio = null;
       this.fState = 0;
       this.fVolume = 0.0;
@@ -2684,6 +2685,17 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
     this.$final = function () {
       this.fAudio = undefined;
       pas.System.TObject.$final.call(this);
+    };
+    this.Create$1 = function (ASource, AVolume, ALooping) {
+      pas.System.TObject.Create.call(this);
+      this.fLooping = ALooping;
+      this.fAudio = $impl.Clone(ASource);
+      this.fAudio.loop = ALooping;
+      this.fAudio.volume = AVolume;
+      this.fAudio.play();
+      this.fState = 0;
+      this.fVolume = AVolume;
+      return this;
     };
     this.Destroy = function () {
       this.fAudio = null;
@@ -2717,6 +2729,10 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
       this.fSources = pas.Classes.TList.$create("Create$1");
       return this;
     };
+    this.Play = function (ASource, AVolume, ALooping) {
+      if (ASource === null) return;
+      this.fSources.Add($mod.TGameAudioSource.$create("Create$1",[ASource,AVolume,ALooping]));
+    };
     this.Update = function (ATimeMS) {
       var el = undefined;
       var toRemove = null;
@@ -2748,6 +2764,9 @@ rtl.module("gameaudio",["System","Web","webaudio","Classes"],function () {
   $mod.$implcode = function () {
     $impl.GetContext = function () {
       return new (window.AudioContext || window.webkitAudioContext)();
+    };
+    $impl.Clone = function (n) {
+      return n.cloneNode();
     };
     $impl.Lerp = function (a, b, t) {
       var Result = 0.0;
@@ -3097,6 +3116,11 @@ rtl.module("GameBase",["System","JS","Web","webgl","gameaudio","GameMath","SysUt
       this.B = s.B;
       this.A = s.A;
       return this;
+    };
+    this.Transparent = function () {
+      var Result = $mod.TGameColor.$new();
+      Result.$assign($mod.TGameColor.New(0,0,0,0));
+      return Result;
     };
     this.New = function (AR, AG, AB, AA) {
       var Result = $mod.TGameColor.$new();
@@ -3502,7 +3526,6 @@ rtl.module("resources",["System","Classes","SysUtils","Web","JS","GameBase"],fun
           $in = rtl.freeLoc($in)
         };
       };
-      window.console.log("Loaded " + source);
       $impl.LoadedCount += 1;
       Result = true;
       return Result;
@@ -3542,6 +3565,25 @@ rtl.module("resources",["System","Classes","SysUtils","Web","JS","GameBase"],fun
       img.src = ASrc;
       Result = $impl.TResourceTexture.$create("Create$1",[1,1]);
       $impl.Resources.Add($impl.TResource.$create("Create$1",[ASrc,img,Result]));
+      return Result;
+    };
+    this.AddSound = function (ASrc) {
+      var Result = null;
+      var res = undefined;
+      var $in = $impl.Resources.GetEnumerator();
+      try {
+        while ($in.MoveNext()) {
+          res = $in.GetCurrent();
+          if (rtl.getObject(res).fSrc === ASrc) return rtl.getObject(res).fTargetObj;
+        }
+      } finally {
+        $in = rtl.freeLoc($in)
+      };
+      Result = rtl.asExt(document.createElement("audio"),HTMLAudioElement);
+      Result.preload = "auto";
+      Result.addEventListener("canplaythrough",rtl.createSafeCallback(this,"Loaded"));
+      Result.src = ASrc;
+      $impl.Resources.Add($impl.TResource.$create("Create$1",[ASrc,Result,Result]));
       return Result;
     };
     this.Completed = function () {
@@ -3606,7 +3648,6 @@ rtl.module("resources",["System","Classes","SysUtils","Web","JS","GameBase"],fun
             rtl.getObject(ADest).SetText(s);
             $impl.LoadedCount += 1;
           };
-          window.console.log("Loaded " + ASrc);
         };
       } catch ($e) {
         window.console.log($e);
@@ -3644,6 +3685,8 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
       this.fHeight = 0;
       this.fHitTestVisible = false;
       this.fOnClick = null;
+      this.fOnMouseEnter = null;
+      this.fOnMouseLeave = null;
       this.fParent = null;
       this.fTag = 0;
       this.fVisible$1 = false;
@@ -3652,6 +3695,8 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
     };
     this.$final = function () {
       this.fOnClick = undefined;
+      this.fOnMouseEnter = undefined;
+      this.fOnMouseLeave = undefined;
       this.fParent = undefined;
       this.fChildren = undefined;
       pas.GameBase.TGameElement.$final.call(this);
@@ -3675,6 +3720,15 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
         i = $l;
         rtl.getObject(this.fChildren.Get(i)).Render(AContext,SubViewPort);
       };
+    };
+    this.NotifyRemovedSubchild = function (AChild) {
+      if (this.fParent != null) this.fParent.NotifyRemovedSubchild(AChild);
+    };
+    this.DoMouseLeave = function (ACoord) {
+      if (this.fOnMouseLeave != null) this.fOnMouseLeave(this,ACoord);
+    };
+    this.DoMouseEnter = function (ACoord) {
+      if (this.fOnMouseEnter != null) this.fOnMouseEnter(this,ACoord);
     };
     this.HitTest = function (ACoord) {
       var Result = false;
@@ -3726,6 +3780,13 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
       };
       if (this.fOnClick != null) this.fOnClick(this,ACoord);
     };
+    this.DoMove = function (ACoord, AHit, AControl) {
+      var Hit = 0;
+      AHit.set(true);
+      AControl.set(this);
+      Hit = this.HitChild($mod.TGUIPoint.$clone(ACoord));
+      if (Hit >= 0) this.GetChild(Hit).DoMove($mod.TGUIPoint.$clone(this.TranslateToLocal(ACoord)),AHit,AControl);
+    };
     this.TranslateToLocal = function (AGlobal) {
       var Result = $mod.TGUIPoint.$new();
       Result.$assign($mod.TGUIPoint.Create(AGlobal.X - this.fPosition.X,AGlobal.Y - this.fPosition.Y));
@@ -3735,15 +3796,25 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
       AChild.fParent = this;
       this.fChildren.Add(AChild);
     };
+    this.RemoveChild = function (AChild) {
+      this.NotifyRemovedSubchild(AChild);
+      AChild.fParent = null;
+      this.fChildren.Remove(AChild);
+    };
   });
   rtl.createClass(this,"TGUI",this.TGUIElement,function () {
     this.$init = function () {
       $mod.TGUIElement.$init.call(this);
+      this.fCurrentHover = null;
       this.Viewport = pas.GameBase.TGameViewport.$new();
     };
     this.$final = function () {
+      this.fCurrentHover = undefined;
       this.Viewport = undefined;
       $mod.TGUIElement.$final.call(this);
+    };
+    this.NotifyRemovedSubchild = function (AChild) {
+      if (AChild === this.fCurrentHover) this.fCurrentHover = null;
     };
     this.Render = function (AContext, AViewport) {
       this.DoRender(AContext);
@@ -3762,6 +3833,21 @@ rtl.module("guibase",["System","Web","webgl","GameBase","GameMath","Classes","Sy
       AHandled.set(false);
       Hit = this.HitChild($mod.TGUIPoint.$clone(ACoord));
       if (Hit >= 0) this.GetChild(Hit).DoClick($mod.TGUIPoint.$clone(this.TranslateToLocal(ACoord)),AHandled);
+    };
+    this.DoMove = function (ACoord, AHit, AControl) {
+      var leaving = false;
+      var entering = false;
+      $mod.TGUIElement.DoMove.call(this,$mod.TGUIPoint.$clone(ACoord),AHit,AControl);
+      leaving = !AHit.get() || ((AControl.get() !== this.fCurrentHover) && (this.fCurrentHover != null));
+      entering = AHit.get() && (AControl.get() !== this.fCurrentHover);
+      if (leaving && (this.fCurrentHover != null)) {
+        this.fCurrentHover.DoMouseLeave(ACoord);
+        this.fCurrentHover = null;
+      };
+      if (entering) {
+        this.fCurrentHover = AControl.get();
+        this.fCurrentHover.DoMouseEnter(ACoord);
+      };
     };
   });
 });
@@ -3977,6 +4063,8 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
     var mmLoc = null;
     var vc = 0;
     $impl.AllocateStuff(GL);
+    GL.enable(3042);
+    GL.blendFunc(770,771);
     vertices = new Float32Array(4 * 3);
     indices = new Uint16Array(2 * 3);
     for (i2 = 0; i2 <= 3; i2++) {
@@ -4004,6 +4092,7 @@ rtl.module("GameSprite",["System","JS","webgl","GameBase","GameMath","Classes","
     GL.vertexAttribPointer(vc,3,5126,false,0,0);
     GL.enableVertexAttribArray(vc);
     GL.drawElements(4,2 * 3,5123,0);
+    GL.disable(3042);
   };
   $mod.$implcode = function () {
     $impl.Sprites = null;
@@ -4050,6 +4139,7 @@ rtl.module("GameFont",["System","Classes","SysUtils","Math","JS","Web","webgl","
     this.Y = 0.0;
     this.Width = 0.0;
     this.Height = 0.0;
+    this.LineHeight = 0.0;
     this.Texture = null;
     this.Text = "";
     this.$new = function () {
@@ -4058,13 +4148,14 @@ rtl.module("GameFont",["System","Classes","SysUtils","Math","JS","Web","webgl","
       return r;
     };
     this.$eq = function (b) {
-      return (this.X === b.X) && (this.Y === b.Y) && (this.Width === b.Width) && (this.Height === b.Height) && (this.Texture === b.Texture) && (this.Quads === b.Quads) && (this.Text === b.Text);
+      return (this.X === b.X) && (this.Y === b.Y) && (this.Width === b.Width) && (this.Height === b.Height) && (this.LineHeight === b.LineHeight) && (this.Texture === b.Texture) && (this.Quads === b.Quads) && (this.Text === b.Text);
     };
     this.$assign = function (s) {
       this.X = s.X;
       this.Y = s.Y;
       this.Width = s.Width;
       this.Height = s.Height;
+      this.LineHeight = s.LineHeight;
       this.Texture = s.Texture;
       this.Quads = rtl.arrayRef(s.Quads);
       this.Text = s.Text;
@@ -4170,6 +4261,7 @@ rtl.module("GameFont",["System","Classes","SysUtils","Math","JS","Web","webgl","
       };
       Result.Width = 0;
       Result.Height = this.fLineHeight;
+      Result.LineHeight = this.fLineHeight;
       Result.Texture = this.fTexture;
       Result.Text = AStr;
       Result.Quads = rtl.arraySetLength(Result.Quads,$mod.TQuad,AStr.length);
@@ -4286,6 +4378,26 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
   "use strict";
   var $mod = this;
   var $impl = $mod.$impl;
+  rtl.createClass(this,"TGUIImage",pas.guibase.TGUIElement,function () {
+    this.$init = function () {
+      pas.guibase.TGUIElement.$init.call(this);
+      this.fAnimation = "";
+      this.fSprite = null;
+      this.fTime = 0.0;
+    };
+    this.$final = function () {
+      this.fSprite = undefined;
+      pas.guibase.TGUIElement.$final.call(this);
+    };
+    this.Update = function (AGame, ATimeMS) {
+      this.fTime = ATimeMS / 1000;
+      pas.GameBase.TGameElement.Update.call(this,AGame,ATimeMS);
+    };
+    this.Render = function (AContext, AViewport) {
+      if (this.fSprite !== null) pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fWidth,this.fHeight),this.fSprite.GetFrame(this.fAnimation,this.fTime,true));
+      pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
+    };
+  });
   rtl.createClass(this,"TGUIPanel",pas.guibase.TGUIElement,function () {
     this.$init = function () {
       pas.guibase.TGUIElement.$init.call(this);
@@ -4331,6 +4443,11 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.fCaption = AValue;
       this.Redraw();
     };
+    this.SetFont = function (AValue) {
+      if (this.fFont === AValue) return;
+      this.fFont = AValue;
+      this.Redraw();
+    };
     this.SetFontSize = function (AValue) {
       if (this.fSize === AValue) return;
       this.fSize = AValue;
@@ -4340,7 +4457,7 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       var SubViewPort = pas.GameBase.TGameViewport.$new();
       var H = 0.0;
       var Scaling = 0.0;
-      H = this.fTextRun.Height - this.fTextRun.Y;
+      H = this.fTextRun.LineHeight - this.fTextRun.Y;
       Scaling = this.fSize / H;
       SubViewPort.$assign(AViewport);
       SubViewPort.ModelView = pas.GameMath.TPMatrix.$create("CreateTranslation",[-this.fTextRun.X,-this.fTextRun.Y,0]).Multiply$1(pas.GameMath.TPMatrix.$create("CreateScale",[Scaling,Scaling,1])).Multiply$1(AViewport.ModelView).Multiply$1(pas.GameMath.TPMatrix.$create("CreateTranslation",[this.fPosition.X,this.fPosition.Y,0]));
@@ -4357,18 +4474,20 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       return this;
     };
   });
-  rtl.createClass(this,"TGUIInventoryItem",pas.guibase.TGUIElement,function () {
+  rtl.createClass(this,"TGUIInventoryItem",this.TGUIPanel,function () {
     this.$init = function () {
-      pas.guibase.TGUIElement.$init.call(this);
+      $mod.TGUIPanel.$init.call(this);
+      this.fHoverColor = pas.GameBase.TGameColor.$new();
       this.fItem = null;
       this.fItems = 0;
       this.fAnimation = "";
       this.fLabel = null;
     };
     this.$final = function () {
+      this.fHoverColor = undefined;
       this.fItem = undefined;
       this.fLabel = undefined;
-      pas.guibase.TGUIElement.$final.call(this);
+      $mod.TGUIPanel.$final.call(this);
     };
     this.SetItems = function (AValue) {
       if (this.fItems === AValue) return;
@@ -4376,21 +4495,32 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.fLabel.SetCaption(pas.SysUtils.IntToStr(AValue));
     };
     this.Render = function (AContext, AViewport) {
+      $mod.TGUIPanel.Render.call(this,AContext,AViewport);
       pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fHeight,this.fHeight),this.fItem.GetFrame(this.fAnimation,0,true));
-      pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
+    };
+    this.DoMouseEnter = function (ACoord) {
+      pas.guibase.TGUIElement.DoMouseEnter.call(this,ACoord);
+      this.fBackGround.$assign(this.fHoverColor);
+    };
+    this.DoMouseLeave = function (ACoord) {
+      this.fBackGround.$assign(pas.GameBase.TGameColor.Transparent());
+      pas.guibase.TGUIElement.DoMouseLeave.call(this,ACoord);
     };
     this.SetSize = function (AX, AY, AWidth, AHeight) {
       pas.guibase.TGUIElement.SetSize.call(this,AX,AY,AWidth,AHeight);
       this.fLabel.SetFontSize(this.fHeight);
       this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
     };
-    this.Create$3 = function (AItem, AAnimation) {
-      pas.guibase.TGUIElement.Create$2.call(this);
+    this.Create$4 = function (AItem, AAnimation) {
+      $mod.TGUIPanel.Create$3.call(this);
+      this.fHoverColor.$assign(pas.GameBase.TGameColor.Transparent());
+      this.fBackGround.$assign(pas.GameBase.TGameColor.Transparent());
       this.fItem = AItem;
       this.fItems = 0;
       this.fAnimation = AAnimation;
       this.fLabel = $mod.TGUILabel.$create("Create$3");
       this.AddChild(this.fLabel);
+      this.fLabel.fHitTestVisible = false;
       this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
       this.fLabel.SetCaption("0");
       return this;
@@ -4399,13 +4529,21 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
   rtl.createClass(this,"TGUIInventory",pas.guibase.TGUIElement,function () {
     this.$init = function () {
       pas.guibase.TGUIElement.$init.call(this);
+      this.fHoverColor = pas.GameBase.TGameColor.$new();
       this.fItemHeight = 0;
       this.fItems = null;
       this.fItemWidth = 0;
+      this.fOnClickItem = null;
+      this.fChanged = false;
     };
     this.$final = function () {
+      this.fHoverColor = undefined;
       this.fItems = undefined;
+      this.fOnClickItem = undefined;
       pas.guibase.TGUIElement.$final.call(this);
+    };
+    this.ClickItem = function (ATarget, APosition) {
+      if (this.fOnClickItem != null) this.fOnClickItem(ATarget.fItem);
     };
     this.RepackItems = function () {
       var x = 0;
@@ -4425,6 +4563,33 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
         };
       };
     };
+    this.Render = function (AContext, AViewport) {
+      var el = undefined;
+      var e = null;
+      var toFree = null;
+      var idx = 0;
+      if (this.fChanged) {
+        toFree = new Array();
+        for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+          el = $in[$l];
+          e = rtl.getObject(el);
+          if (e.fItems <= 0) {
+            toFree.push(el);
+            this.RemoveChild(e);
+          };
+        };
+        for (var $in1 = toFree, $l1 = 0, $end1 = rtl.length($in1) - 1; $l1 <= $end1; $l1++) {
+          el = $in1[$l1];
+          idx = this.fItems.indexOf(el);
+          this.fItems.splice(idx,1);
+          e = rtl.getObject(el);
+          e = rtl.freeLoc(e);
+        };
+        this.RepackItems();
+        this.fChanged = false;
+      };
+      pas.guibase.TGUIElement.Render.call(this,AContext,AViewport);
+    };
     this.Create$3 = function () {
       pas.guibase.TGUIElement.Create$2.call(this);
       this.fItems = new Array();
@@ -4432,22 +4597,140 @@ rtl.module("guictrls",["System","GameBase","GameSprite","GameMath","GameFont","g
       this.fItemWidth = 70;
       return this;
     };
-    this.AddElements = function (AItem, AAnimation, ACount) {
+    this.AddElements = function (AItem, ACount) {
       var el = undefined;
       var e = null;
       for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
         el = $in[$l];
         e = rtl.getObject(el);
-        if ((e.fItem === AItem) && (e.fAnimation === AAnimation)) {
+        if (e.fItem === AItem) {
           e.SetItems(e.fItems + ACount);
           return;
         };
       };
-      e = $mod.TGUIInventoryItem.$create("Create$3",[AItem,AAnimation]);
+      e = $mod.TGUIInventoryItem.$create("Create$4",[AItem,"idle"]);
       e.SetItems(ACount);
+      e.fOnClick = rtl.createCallback(this,"ClickItem");
+      e.fHoverColor.$assign(this.fHoverColor);
       this.fItems.push(e);
       this.AddChild(e);
-      this.RepackItems();
+      this.fChanged = true;
+    };
+    this.RemoveElements = function (AItem, ACount) {
+      var Result = false;
+      var el = undefined;
+      var e = null;
+      for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+        el = $in[$l];
+        e = rtl.getObject(el);
+        if (e.fItem === AItem) {
+          if (e.fItems >= ACount) {
+            e.SetItems(e.fItems - ACount);
+            this.fChanged = true;
+            return true;
+          } else return false;
+        };
+      };
+      return Result;
+    };
+    this.ElementCount = function (AItem) {
+      var Result = 0;
+      var el = undefined;
+      var e = null;
+      for (var $in = this.fItems, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+        el = $in[$l];
+        e = rtl.getObject(el);
+        if (e.fItem === AItem) return e.fItems;
+      };
+      Result = 0;
+      return Result;
+    };
+  });
+  rtl.createClass(this,"TGUIDialogOption",this.TGUIPanel,function () {
+    this.$init = function () {
+      $mod.TGUIPanel.$init.call(this);
+      this.fIndex = 0;
+      this.fHoverColor = pas.GameBase.TGameColor.$new();
+      this.fText = "";
+      this.fLabel = null;
+    };
+    this.$final = function () {
+      this.fHoverColor = undefined;
+      this.fLabel = undefined;
+      $mod.TGUIPanel.$final.call(this);
+    };
+    this.Render = function (AContext, AViewport) {
+      $mod.TGUIPanel.Render.call(this,AContext,AViewport);
+      pas.GameSprite.RenderFrame(AContext,AViewport,$impl.GetScreenQuad(pas.GameMath.TPVector.$clone(this.fPosition),this.fHeight,this.fHeight),pas.GameSprite.GetSprite("icon-bullet").GetFrame("idle",0,true));
+    };
+    this.DoMouseEnter = function (ACoord) {
+      pas.guibase.TGUIElement.DoMouseEnter.call(this,ACoord);
+      this.fBackGround.$assign(this.fHoverColor);
+    };
+    this.DoMouseLeave = function (ACoord) {
+      this.fBackGround.$assign(pas.GameBase.TGameColor.Transparent());
+      pas.guibase.TGUIElement.DoMouseLeave.call(this,ACoord);
+    };
+    this.Create$4 = function (AIndex, AText) {
+      $mod.TGUIPanel.Create$3.call(this);
+      this.fText = AText;
+      this.fIndex = AIndex;
+      this.fHoverColor.$assign(pas.GameBase.TGameColor.Transparent());
+      this.fBackGround.$assign(pas.GameBase.TGameColor.Transparent());
+      this.fLabel = $mod.TGUILabel.$create("Create$3");
+      this.AddChild(this.fLabel);
+      this.fLabel.fHitTestVisible = false;
+      this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
+      this.fLabel.SetCaption(AText);
+      return this;
+    };
+    this.SetSize = function (AX, AY, AWidth, AHeight) {
+      pas.guibase.TGUIElement.SetSize.call(this,AX,AY,AWidth,AHeight);
+      this.fLabel.SetFontSize(this.fHeight);
+      this.fLabel.SetSize(this.fHeight,0,10000,this.fHeight);
+    };
+  });
+  rtl.createClass(this,"TGUIDialogs",this.TGUIPanel,function () {
+    this.$init = function () {
+      $mod.TGUIPanel.$init.call(this);
+      this.fHoverColor = pas.GameBase.TGameColor.$new();
+      this.fItemHeight = 0;
+      this.fOnClickItem = null;
+    };
+    this.$final = function () {
+      this.fHoverColor = undefined;
+      this.fOnClickItem = undefined;
+      $mod.TGUIPanel.$final.call(this);
+    };
+    this.ClickItem = function (ATarget, APosition) {
+      var res = null;
+      res = ATarget;
+      if (this.fOnClickItem !== null) this.fOnClickItem(res.fIndex);
+    };
+    this.Render = function (AContext, AViewport) {
+      $mod.TGUIPanel.Render.call(this,AContext,AViewport);
+    };
+    this.Create$4 = function () {
+      $mod.TGUIPanel.Create$3.call(this);
+      return this;
+    };
+    this.Clear = function () {
+      var c = null;
+      var i = 0;
+      for (var $l = this.GetChildCount() - 1; $l >= 0; $l--) {
+        i = $l;
+        c = this.GetChild(i);
+        this.RemoveChild(c);
+        c = rtl.freeLoc(c);
+      };
+    };
+    this.AddItem = function (AIndex, AText) {
+      var c = null;
+      c = $mod.TGUIDialogOption.$create("Create$4",[AIndex,AText]);
+      c.SetSize(0,this.GetChildCount() * this.fItemHeight,this.fWidth,this.fItemHeight);
+      c.fOnClick = rtl.createCallback(this,"ClickItem");
+      c.fHoverColor.$assign(this.fHoverColor);
+      this.AddChild(c);
     };
   });
   $mod.$implcode = function () {
@@ -4590,7 +4873,7 @@ rtl.module("ECS",["System","GameBase","JS","Classes","SysUtils","contnrs"],funct
     this.RemoveEntity = function (AEntity) {
       var idx = 0;
       idx = this.fEntities.indexOf(AEntity);
-      if (idx > -1) this.fEntities = this.fEntities.splice(idx,1);
+      if (idx > -1) this.fEntities.splice(idx,1);
     };
   });
   this.EntitySystem = null;
@@ -4606,6 +4889,9 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     this.SectorTiles = 0;
     this.SectorSize = 0;
     this.GrowthTime = 0;
+    this.BarleyHarvest = 0;
+    this.HopsHarvest = 0;
+    this.PlayerReach = 0.0;
     this.PlayerAnnoyanceLevel = 0.0;
     this.PlayerAttackRange = 0.0;
     this.KingAnnoyanceLevel = 0.0;
@@ -4614,12 +4900,15 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     this.AnnoyanceCooldown = 0.0;
     this.Characters = null;
     this.$eq = function (b) {
-      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.DamageRange === b.DamageRange) && (this.DamageAnnoyanceRatio === b.DamageAnnoyanceRatio) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
+      return (this.SectorTiles === b.SectorTiles) && (this.SectorSize === b.SectorSize) && (this.GrowthTime === b.GrowthTime) && (this.BarleyHarvest === b.BarleyHarvest) && (this.HopsHarvest === b.HopsHarvest) && (this.PlayerReach === b.PlayerReach) && (this.PlayerAnnoyanceLevel === b.PlayerAnnoyanceLevel) && (this.PlayerAttackRange === b.PlayerAttackRange) && (this.KingAnnoyanceLevel === b.KingAnnoyanceLevel) && (this.DamageRange === b.DamageRange) && (this.DamageAnnoyanceRatio === b.DamageAnnoyanceRatio) && (this.AnnoyanceCooldown === b.AnnoyanceCooldown) && (this.Characters === b.Characters);
     };
     this.$assign = function (s) {
       this.SectorTiles = s.SectorTiles;
       this.SectorSize = s.SectorSize;
       this.GrowthTime = s.GrowthTime;
+      this.BarleyHarvest = s.BarleyHarvest;
+      this.HopsHarvest = s.HopsHarvest;
+      this.PlayerReach = s.PlayerReach;
       this.PlayerAnnoyanceLevel = s.PlayerAnnoyanceLevel;
       this.PlayerAttackRange = s.PlayerAttackRange;
       this.KingAnnoyanceLevel = s.KingAnnoyanceLevel;
@@ -4639,8 +4928,11 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     $mod.Config.SectorTiles = $impl.TryGet(fInfo,"SectorTiles",3);
     $mod.Config.SectorSize = $impl.TryGet(fInfo,"SectorSize",150);
     $mod.Config.GrowthTime = $impl.TryGet(fInfo,"GrowthTime",10);
+    $mod.Config.BarleyHarvest = $impl.TryGet(fInfo,"BarleyHarvest",3);
+    $mod.Config.HopsHarvest = $impl.TryGet(fInfo,"HopsHarvest",2);
+    $mod.Config.PlayerReach = $impl.TryGetDouble(fInfo,"PlayerReach",30);
     $mod.Config.PlayerAnnoyanceLevel = $impl.TryGetDouble(fInfo,"PlayerAnnoyanceLevel",2);
-    $mod.Config.PlayerAttackRange = $impl.TryGetDouble(fInfo,"PlayerAttackRange",200);
+    $mod.Config.PlayerAttackRange = $impl.TryGetDouble(fInfo,"PlayerAttackRange",100);
     $mod.Config.KingAnnoyanceLevel = $impl.TryGetDouble(fInfo,"KingAnnoyanceLevel",10);
     $mod.Config.DamageRange = $impl.TryGetDouble(fInfo,"DamageRange",200);
     $mod.Config.DamageAnnoyanceRatio = $impl.TryGetDouble(fInfo,"DamageAnnoyanceRatio",1);
@@ -4669,7 +4961,30 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     };
   };
 },[]);
-rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","webgl","Classes","SysUtils"],function () {
+rtl.module("ldsounds",["System","JS","Web","Classes","SysUtils"],function () {
+  "use strict";
+  var $mod = this;
+  var $impl = $mod.$impl;
+  this.AddSound = function (name, Snd) {
+    $impl.Sounds.set(name,Snd);
+  };
+  this.GetSound = function (name) {
+    var Result = null;
+    var res = undefined;
+    res = $impl.Sounds.get(name);
+    if (res == undefined) {
+      Result = null}
+     else Result = res;
+    return Result;
+  };
+  $mod.$implcode = function () {
+    $impl.Sounds = null;
+  };
+  $mod.$init = function () {
+    $impl.Sounds = new Map();
+  };
+},[]);
+rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","Web","webgl","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
   var $impl = $mod.$impl;
@@ -4692,6 +5007,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     this.$init = function () {
       pas.GameBase.TGameElement.$init.call(this);
       this.fAttacking = false;
+      this.fAttackSound = null;
       this.fBaseDamage = 0.0;
       this.fGold = 0;
       this.fHP = 0.0;
@@ -4707,6 +5023,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
       this.fLastTime = 0.0;
     };
     this.$final = function () {
+      this.fAttackSound = undefined;
       this.fTarget = undefined;
       this.fActor = undefined;
       this.fSprite = undefined;
@@ -4764,6 +5081,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     this.TriggerAttack = function () {
       var Result = false;
       if (this.fAttacking) return false;
+      if ((this.fAttackSound !== null) && this.fVisible) pas.GameBase.Game().fAudio.Play(this.fAttackSound,1,false);
       this.fAttackTime = this.fTime;
       this.fAttacking = true;
       this.fAnimation = "attack";
@@ -4774,6 +5092,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
   this.SectorMax = 0.0;
   this.Player = null;
   this.King = null;
+  this.CharactersVisible = null;
   this.Characters = null;
   this.Behaviors = null;
   this.GetName = function () {
@@ -4799,8 +5118,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
   this.SpawnCharacter = function (AName, AType, ASector, AX, AY) {
     var Result = null;
     $mod.SectorMax = pas.ldconfig.Config.SectorSize * pas.ldconfig.Config.SectorTiles;
-    pas.System.Writeln("Spawning ",AType);
-    Result = $mod.TLDCharacter.$create("Create$2",[AName,$impl.GetCharacterSprite(AType),ASector,AX,AY]);
+    Result = $mod.TLDCharacter.$create("Create$2",[AType,$impl.GetCharacterSprite(AType),ASector,AX,AY]);
     $mod.Characters.push(Result);
     $impl.ConfigureCharacter(Result,AType);
     pas.GameBase.Game().AddElement(Result);
@@ -4814,9 +5132,11 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
   };
   this.ShowCharacters = function (ASector) {
     var ch = undefined;
+    $mod.CharactersVisible = new Array();
     for (var $in = $mod.Characters, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
       ch = $in[$l];
       rtl.getObject(ch).fVisible = rtl.getObject(ch).fSector === ASector;
+      if (rtl.getObject(ch).fSector === ASector) $mod.CharactersVisible.push(rtl.getObject(ch));
     };
   };
   $mod.$implcode = function () {
@@ -4827,6 +5147,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
       AChar.fHP = rtl.getNumber(cfg["hp"]);
       AChar.fSpeed = rtl.getNumber(cfg["speed"]);
       AChar.fBaseDamage = rtl.getNumber(cfg["damage"]);
+      AChar.fAttackSound = pas.ldsounds.GetSound("" + cfg["attacksound"]);
       AChar.fTarget.$assign(AChar.fPosition);
       for (var $in = cfg["behavior"], $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
         beh = $in[$l];
@@ -4853,7 +5174,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","we
     $mod.Characters = new Array();
     $mod.Behaviors = new Map();
   };
-},["ldconfig"]);
+},["ldsounds","ldconfig"]);
 rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase","GameSprite","GameMath","Classes","SysUtils"],function () {
   "use strict";
   var $mod = this;
@@ -4973,8 +5294,8 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       var beh = undefined;
       pas.ECS.TECEntity.Create$1.call(this,ASystem);
       this.fTileType = ATileType;
-      this.AddComponent($impl.TileComp);
-      $impl.TileComp.SetInfo(this,ASector,AX,AY);
+      this.AddComponent($mod.TileComp);
+      $mod.TileComp.SetInfo(this,ASector,AX,AY);
       for (var $in = ATileType.fBehaviors, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
         beh = $in[$l];
         this.AddComponent(rtl.getObject($impl.Behaviors.get(beh)));
@@ -5041,11 +5362,24 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
         animation = "" + bb["animation"];
         width = rtl.getNumber(bb["width"]);
         height = rtl.getNumber(bb["height"]);
-        $impl.TileComp.AddBillboard(this.fTiles[AX][AY],pas.GameSprite.GetSprite(sp),animation,width,height);
+        $mod.TileComp.AddBillboard(this.fTiles[AX][AY],pas.GameSprite.GetSprite(sp),animation,width,height);
       };
     };
     this.SetTile$1 = function (AX, AY, AName) {
       this.SetTile(AX,AY,$impl.TileInfo.GetTile(AName));
+    };
+    this.GetTileAt = function (APos) {
+      var Result = null;
+      var tileX = 0;
+      var tiley = 0;
+      tileX = pas.System.Trunc(APos.X / pas.ldconfig.Config.SectorSize);
+      tiley = pas.System.Trunc(APos.Y / pas.ldconfig.Config.SectorSize);
+      if (tileX < 0) tileX = 0;
+      if (tiley < 0) tiley = 0;
+      if (tileX >= pas.ldconfig.Config.SectorTiles) tileX = pas.ldconfig.Config.SectorTiles - 1;
+      if (tiley >= pas.ldconfig.Config.SectorTiles) tiley = pas.ldconfig.Config.SectorTiles - 1;
+      Result = this.fTiles[tileX][tiley];
+      return Result;
     };
   });
   rtl.createClass(this,"TLDMap",pas.GameBase.TGameElement,function () {
@@ -5119,7 +5453,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
             tile = this.fCurrentSector.fTiles[i][i2];
             if (tile.HasComponent(hops)) hops.SetPlantsVisible(tile,false);
             if (tile.HasComponent(field)) field.SetPlantsVisible(tile,false);
-            $impl.TileComp.SetBillboardsVisible(tile,false);
+            $mod.TileComp.SetBillboardsVisible(tile,false);
           };
         };
       };
@@ -5132,7 +5466,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
           tile = this.fCurrentSector.fTiles[i][i2];
           if (tile.HasComponent(hops)) hops.SetPlantsVisible(tile,true);
           if (tile.HasComponent(field)) field.SetPlantsVisible(tile,true);
-          $impl.TileComp.SetBillboardsVisible(tile,true);
+          $mod.TileComp.SetBillboardsVisible(tile,true);
         };
       };
       pas.ldactor.ShowCharacters(this.fCurrentSector.fID);
@@ -5153,6 +5487,16 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       this.fSprite = undefined;
       pas.GameBase.TGameElement.$final.call(this);
     };
+    this.GetName = function () {
+      var Result = "";
+      Result = this.fSprite.fName;
+      return Result;
+    };
+    this.GetReady = function () {
+      var Result = false;
+      Result = this.fSize >= this.fMax;
+      return Result;
+    };
     this.Render = function (GL, AViewport) {
       var frame = pas.GameSprite.TGameFrame.$new();
       frame.$assign(this.fSprite.GetFrame("stage" + pas.SysUtils.IntToStr(this.fSize),this.fTime + this.fTimeOffset,true));
@@ -5167,6 +5511,10 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       } else this.fLastTime = ATimeMS;
       this.fTime = ATimeMS / 1000;
     };
+    this.Harvest = function () {
+      this.fTime = this.fLastTime;
+      this.fSize = 0;
+    };
     this.Create$2 = function (AX, AY, ASprite, AMaxStage) {
       pas.GameBase.TGameElement.Create$1.call(this,false);
       this.fMax = AMaxStage;
@@ -5180,6 +5528,8 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
   rtl.createClass(this,"TBillboard",pas.GameBase.TGameElement,function () {
     this.$init = function () {
       pas.GameBase.TGameElement.$init.call(this);
+      this.fIsItem = false;
+      this.fTile = null;
       this.fTime = 0.0;
       this.fTimeOffset = 0.0;
       this.fSprite = null;
@@ -5188,6 +5538,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       this.fHeight = 0.0;
     };
     this.$final = function () {
+      this.fTile = undefined;
       this.fSprite = undefined;
       pas.GameBase.TGameElement.$final.call(this);
     };
@@ -5199,8 +5550,9 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     this.Update = function (AGame, ATimeMS) {
       this.fTime = ATimeMS / 1000;
     };
-    this.Create$2 = function (AX, AY, AWidth, AHeight, ASprite, AAnimation) {
+    this.Create$2 = function (ATile, AX, AY, AWidth, AHeight, ASprite, AAnimation) {
       pas.GameBase.TGameElement.Create$1.call(this,false);
+      this.fTile = ATile;
       this.fTimeOffset = Math.random();
       this.fPosition.$assign(pas.GameMath.TPVector.New(AX,AY,0));
       this.fSprite = ASprite;
@@ -5239,6 +5591,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       AY.set(rtl.trunc(data.get("y")));
     };
     this.AddBillboard = function (ATile, ASprite, AAnimation, AWidth, AHeight) {
+      var Result = null;
       var bbs = null;
       var s = 0;
       var x = 0;
@@ -5260,9 +5613,24 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
           y = v;
         }});
       SectorSize = pas.ldconfig.Config.SectorSize;
-      bb = $mod.TBillboard.$create("Create$2",[(x + 0.5) * SectorSize,(y + 0.5) * SectorSize,AWidth,AHeight,ASprite,AAnimation]);
+      bb = $mod.TBillboard.$create("Create$2",[ATile,(x + 0.5) * SectorSize,(y + 0.5) * SectorSize,AWidth,AHeight,ASprite,AAnimation]);
       pas.GameBase.Game().AddElement(bb).fVisible = false;
       bbs.push(bb);
+      Result = bb;
+      return Result;
+    };
+    this.RemoveBillboard = function (ATile, ABillboard) {
+      var bbs = null;
+      var idx = 0;
+      bbs = this.GetData(ATile).get("billboards");
+      idx = bbs.indexOf(ABillboard);
+      if (idx > -1) bbs.splice(idx,1);
+      pas.GameBase.Game().RemoveElement(ABillboard,true);
+    };
+    this.GetItems = function (AEntity) {
+      var Result = null;
+      Result = this.GetData(AEntity).get("billboards");
+      return Result;
     };
     this.SetBillboardsVisible = function (AEntity, AVisible) {
       var bbs = null;
@@ -5296,7 +5664,7 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
       var x = 0;
       pas.ECS.TECComponent.Init.call(this,AEntity);
       plants = new Array();
-      $impl.TileComp.GetInfo(AEntity,{get: function () {
+      $mod.TileComp.GetInfo(AEntity,{get: function () {
           return sec;
         }, set: function (v) {
           sec = v;
@@ -5329,11 +5697,15 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     this.Update = function (AEntity, ADeltaMS, ATimeMS) {
       pas.ECS.TECComponent.Update.call(this,AEntity,ADeltaMS,ATimeMS);
     };
+    this.GetPlants = function (AEntity) {
+      var Result = null;
+      Result = this.GetData(AEntity).get("plants");
+      return Result;
+    };
     this.SetPlantsVisible = function (AEntity, AVisible) {
       var el = undefined;
       var plants = null;
       plants = this.GetData(AEntity).get("plants");
-      pas.System.Writeln("Setting stuff ",AVisible);
       for (var $in = plants, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
         el = $in[$l];
         rtl.getObject(el).fVisible = AVisible;
@@ -5367,11 +5739,13 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     $mod.SectorArrows[2].fAvail = $mod.Map.HasSector(x,y + 1);
     $mod.SectorArrows[3].fAvail = $mod.Map.HasSector(x - 1,y);
   };
+  this.FieldComp = null;
+  this.HopsComp = null;
+  this.TileComp = null;
   $mod.$implcode = function () {
     $impl.Sectors = 0;
     $impl.TileInfo = null;
     $impl.Behaviors = null;
-    $impl.TileComp = null;
     $impl.GetGrowthRect = function (ACenter, AWidth, AHeight) {
       var Result = rtl.arraySetLength(null,pas.GameMath.TPVector,4);
       Result[0].$assign(ACenter.Add(pas.GameMath.TPVector.New(-AWidth / 2,0,AHeight)));
@@ -5402,11 +5776,13 @@ rtl.module("ldmap",["System","JS","webgl","ECS","resources","ldconfig","GameBase
     };
   };
   $mod.$init = function () {
-    $impl.TileComp = pas.ECS.EntitySystem.RegisterComponent($mod.TTileComponent);
+    $mod.TileComp = pas.ECS.EntitySystem.RegisterComponent($mod.TTileComponent);
     $impl.Behaviors = new Map();
     $impl.Behaviors.set("harvestable",pas.ECS.EntitySystem.RegisterComponent($mod.THarvestable));
-    $impl.Behaviors.set("field",pas.ECS.EntitySystem.RegisterComponent($mod.TField));
-    $impl.Behaviors.set("hops",pas.ECS.EntitySystem.RegisterComponent($mod.THops));
+    $mod.FieldComp = pas.ECS.EntitySystem.RegisterComponent($mod.TField);
+    $mod.HopsComp = pas.ECS.EntitySystem.RegisterComponent($mod.THops);
+    $impl.Behaviors.set("field",$mod.FieldComp);
+    $impl.Behaviors.set("hops",$mod.HopsComp);
     $mod.Map = $mod.TLDMap.$create("Create$2");
   };
 },["ldactor"]);
@@ -5479,20 +5855,9 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
         this.DoAttack(AEntity,pas.ldactor.King.fActor);
       } else data.set("state",3);
     };
-    this.AddAnnoyance = function (AEntity, ATarget, AAnnoyance) {
-      var data = null;
-      var annoyances = null;
-      var k = "";
-      data = this.GetData(AEntity);
-      annoyances = data.get("annoyances");
-      k = ATarget.GetKey();
-      if (annoyances.has(k)) {
-        annoyances.set(k,rtl.getNumber(annoyances.get(k)) + AAnnoyance)}
-       else annoyances.set(k,AAnnoyance);
-    };
   });
   rtl.createClass(this,"THomeTileBehavior",this.TNPCBehavior,function () {
-    this.UpdateInterval = 3;
+    this.UpdateInterval = 5;
     this.Init = function (AEntity) {
       var ent = null;
       $mod.TNPCBehavior.Init.call(this,AEntity);
@@ -5521,11 +5886,12 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
         var $tmp = state;
         if ($tmp === 0) {
           last_update = rtl.getNumber(ent.get("last-update"));
-          if ((ATimeMS - last_update) > (3 * 1000)) {
+          if ((ATimeMS - last_update) > (5 * 1000)) {
             x = rtl.getNumber(ent.get("home-x"));
             y = rtl.getNumber(ent.get("home-y"));
             newCoord.$assign(pas.GameMath.TPVector.New(((x + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,((y + Math.random()) * pas.ldconfig.Config.SectorSize * 0.99) + 0.01,0));
             char.fTarget.$assign(newCoord);
+            if (char.fVisible) pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("rake"),0.3,false);
             ent.set("last-update",ATimeMS - (1000 * Math.random()));
           };
         };
@@ -5555,8 +5921,8 @@ rtl.module("ldai",["System","ldactor","ldconfig","ECS","GameMath","Classes","Sys
     $mod.KingBehavior = pas.ldactor.RegisterComponent("king",$mod.TKingBehavior);
     $mod.PlayerBehavior = pas.ldactor.RegisterComponent("player",$mod.TPlayerBehavior);
   };
-});
-rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","resources","guibase","guictrls","GameBase","gameaudio","GameMath","GameSprite","ECS","GameFont","ldmap","ldactor","ldconfig","ldai"],function () {
+},["GameBase","ldsounds"]);
+rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","resources","guibase","guictrls","GameBase","gameaudio","GameMath","GameSprite","ECS","GameFont","ldmap","ldactor","ldconfig","ldai","ldsounds"],function () {
   "use strict";
   var $mod = this;
   rtl.createClass(this,"TText",pas.GameBase.TGameElement,function () {
@@ -5579,7 +5945,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
     };
   });
   this.TLDGameState = {"0": "gsIntro", gsIntro: 0, "1": "gsMain", gsMain: 1, "2": "gsDialog", gsDialog: 2};
-  this.TAction = {"0": "aMove", aMove: 0, "1": "aAttack", aAttack: 1, "2": "aTalk", aTalk: 2, "3": "aUse", aUse: 3, "4": "aPickUp", aPickUp: 4};
+  this.TAction = {"0": "aMove", aMove: 0, "1": "aAttack", aAttack: 1, "2": "aTalk", aTalk: 2, "3": "aUse", aUse: 3, "4": "aPickUp", aPickUp: 4, "5": "aDrop", aDrop: 5};
   rtl.createClass(this,"TLD49Game",pas.GameBase.TGameBase,function () {
     this.$init = function () {
       pas.GameBase.TGameBase.$init.call(this);
@@ -5587,16 +5953,33 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.StartSector = null;
       this.State = 0;
       this.IntroElements = null;
+      this.DialogElements = null;
+      this.DialogGUI = null;
+      this.DialogBackH = null;
+      this.DialogIcon = null;
+      this.DialogText = null;
+      this.DialogOptions = null;
+      this.DialogTarget = undefined;
+      this.DialogStack = null;
+      this.DialogCfg = null;
       this.MainGUI = null;
       this.MainGuiPanel = null;
       this.InvPanel = null;
       this.InvGoldLabel = null;
       this.Inventory = null;
-      this.Actions = rtl.arraySetLength(null,null,5);
+      this.Actions = rtl.arraySetLength(null,null,6);
     };
     this.$final = function () {
       this.StartSector = undefined;
       this.IntroElements = undefined;
+      this.DialogElements = undefined;
+      this.DialogGUI = undefined;
+      this.DialogBackH = undefined;
+      this.DialogIcon = undefined;
+      this.DialogText = undefined;
+      this.DialogOptions = undefined;
+      this.DialogStack = undefined;
+      this.DialogCfg = undefined;
       this.MainGUI = undefined;
       this.MainGuiPanel = undefined;
       this.InvPanel = undefined;
@@ -5613,6 +5996,295 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.Actions[this.fCurrentAction].fColor.$assign(pas.GameBase.TGameColor.New(1,1,1,1.0));
       this.fCurrentAction = AValue;
       this.Actions[AValue].fColor.$assign(pas.GameBase.TGameColor.New(1,1,0,1.0));
+    };
+    this.HasBeer = function () {
+      var Result = false;
+      Result = (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-beer-reg")) > 0) || (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-beer-med")) > 0) || (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-beer-strong")) > 0) || (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-beer-suicide")) > 0);
+      return Result;
+    };
+    this.WantsBeer = function (ATarget) {
+      var Result = false;
+      Result = true;
+      return Result;
+    };
+    this.ClickDialog = function (AIndex) {
+      var curr = null;
+      var selected = null;
+      curr = this.DialogStack[this.DialogStack.length - 1];
+      if (AIndex === -1) {
+        this.DialogStack.splice(this.DialogStack.length - 1);
+        if (this.DialogStack.length > 0) {
+          this.TriggerDialog$1(this.DialogStack[this.DialogStack.length - 1],false)}
+         else this.State = 1;
+      } else {
+        selected = curr["entries"][AIndex];
+        if (selected["subdialog"] != undefined) {
+          this.TriggerDialog$1(this.DialogCfg["" + selected["subdialog"]],true);
+        } else if (selected["trigger"] != undefined) {
+          this.State = 1;
+          this.DialogStack.splice(this.DialogStack.length - 1);
+          this.WriteStatus("" + selected["trigger"]);
+        } else pas.System.Writeln("Dead end?!");
+      };
+    };
+    this.TriggerDialog = function (ATarget, ADialog, APush) {
+      var curr = null;
+      this.State = 2;
+      this.DialogTarget = ATarget;
+      curr = this.DialogCfg[ADialog];
+      this.TriggerDialog$1(curr,APush);
+    };
+    this.TriggerDialog$1 = function (ADialog, APush) {
+      var ent2 = null;
+      var ent = undefined;
+      var idx = 0;
+      var avail = false;
+      if (APush) this.DialogStack.push(ADialog);
+      this.DialogIcon.fSprite = pas.GameSprite.GetSprite("" + ADialog["icon"]);
+      this.DialogIcon.fAnimation = "" + ADialog["animation"];
+      this.DialogText.SetCaption("" + ADialog["start"]);
+      this.DialogOptions.Clear();
+      idx = 0;
+      for (var $in = ADialog["entries"], $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
+        ent = $in[$l];
+        ent2 = ent;
+        avail = true;
+        if (ent2["gold"] != undefined) avail = avail && (rtl.trunc(ent2["gold"]) <= pas.ldactor.Player.fGold);
+        if (ent2["beer"] != undefined) avail = avail && this.HasBeer() && this.WantsBeer(this.DialogTarget);
+        if (ent2["grain"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-barley")) > rtl.trunc(ent2["grain"]));
+        if (ent2["hops"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-hops")) > rtl.trunc(ent2["hops"]));
+        if (avail) this.DialogOptions.AddItem(idx,"" + ent2["option"]);
+        idx += 1;
+      };
+      this.DialogOptions.AddItem(-1,"Back");
+    };
+    var DW = 800;
+    var DH = 600;
+    this.MakeDialog = function () {
+      var DialogPanel = null;
+      this.DialogGUI = pas.guibase.TGUI.$create("Create$2");
+      this.DialogGUI.Resize(this.fWidth,this.fHeight);
+      this.DialogElements = new Array();
+      this.DialogElements.push(this.DialogGUI);
+      this.DialogBackH = pas.guictrls.TGUIPanel.$create("Create$3");
+      this.DialogBackH.SetSize(0,0,this.fWidth,this.fHeight);
+      this.DialogBackH.fBackGround.$assign(pas.GameBase.TGameColor.New(0.3,0.3,0.3,1.0));
+      this.DialogGUI.AddChild(this.DialogBackH);
+      DialogPanel = pas.guictrls.TGUIPanel.$create("Create$3");
+      DialogPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(0.8,0.8,0.8,1.0));
+      DialogPanel.SetSize(rtl.trunc((this.fWidth - 800) / 2),rtl.trunc((this.fHeight - 600) / 2),800,600);
+      this.DialogGUI.AddChild(DialogPanel);
+      this.DialogIcon = pas.guictrls.TGUIImage.$create("Create$2");
+      this.DialogIcon.SetSize(0,0,256,256);
+      DialogPanel.AddChild(this.DialogIcon);
+      this.DialogText = pas.guictrls.TGUILabel.$create("Create$3");
+      this.DialogText.SetSize(256,0,800 - 256,600 - (5 * 30));
+      this.DialogText.SetFontSize(30);
+      this.DialogText.SetFont("sans");
+      this.DialogText.SetCaption("test");
+      DialogPanel.AddChild(this.DialogText);
+      this.DialogOptions = pas.guictrls.TGUIDialogs.$create("Create$4");
+      this.DialogOptions.SetSize(0,600 - (5 * 30),800,5 * 30);
+      this.DialogOptions.fItemHeight = 30;
+      this.DialogOptions.fBackGround.$assign(pas.GameBase.TGameColor.New(0.85,0.85,0.85,1.0));
+      this.DialogOptions.fHoverColor.$assign(pas.GameBase.TGameColor.New(1,1,1,1.0));
+      this.DialogOptions.fOnClickItem = rtl.createCallback(this,"ClickDialog");
+      DialogPanel.AddChild(this.DialogOptions);
+    };
+    this.AddInventory = function (ASprite, ACount) {
+      this.Inventory.AddElements(pas.GameSprite.GetSprite(ASprite),ACount);
+    };
+    this.HasInventory = function (ASprite, ACount) {
+      var Result = false;
+      Result = this.Inventory.ElementCount(pas.GameSprite.GetSprite(ASprite)) >= ACount;
+      return Result;
+    };
+    this.RemoveInventory = function (ASprite, ACount) {
+      var Result = false;
+      Result = this.Inventory.RemoveElements(pas.GameSprite.GetSprite(ASprite),ACount);
+      return Result;
+    };
+    this.DropItem = function (AName, ASector, APosition) {
+      var fCurrentTile = null;
+      var bb = null;
+      fCurrentTile = ASector.GetTileAt(pas.GameMath.TPVector.$clone(APosition));
+      bb = pas.ldmap.TileComp.AddBillboard(fCurrentTile,pas.GameSprite.GetSprite(AName),"idle",20,20);
+      bb.fPosition.$assign(APosition);
+      bb.fIsItem = true;
+      bb.fVisible = true;
+    };
+    this.ClickInventory = function (AItem) {
+      var $tmp = this.fCurrentAction;
+      if ($tmp === 5) {
+        this.RemoveInventory(AItem.fName,1);
+        this.DropItem(AItem.fName,pas.ldmap.Map.fCurrentSector,pas.GameMath.TPVector.$clone(pas.ldactor.Player.fPosition));
+        this.fAudio.Play(pas.resources.TResources.AddSound("assets\/Audio\/proc_plop.m4a"),1,false);
+      } else if ($tmp === 3) {
+        var $tmp1 = AItem.fName;
+        if (($tmp1 === "icon-beer-reg") || ($tmp1 === "icon-beer-med") || ($tmp1 === "icon-beer-strong") || ($tmp1 === "icon-beer-suicide")) {
+          this.WriteStatus("Drink " + AItem.fName + "!");
+          pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("drink"),0.8,false);
+          this.RemoveInventory(AItem.fName,1);
+        } else {
+          this.WriteStatus("You can't do that");
+        };
+      } else {
+        this.WriteStatus("You can't do that");
+      };
+    };
+    this.WriteStatus = function (AMessage) {
+      pas.System.Writeln(AMessage);
+    };
+    this.FindBBsInSector = function () {
+      var Result = null;
+      var i = 0;
+      var i2 = 0;
+      Result = new Array();
+      for (var $l = 0, $end = pas.ldconfig.Config.SectorTiles - 1; $l <= $end; $l++) {
+        i = $l;
+        for (var $l1 = 0, $end1 = pas.ldconfig.Config.SectorTiles - 1; $l1 <= $end1; $l1++) {
+          i2 = $l1;
+          Result = Result.concat(pas.ldmap.TileComp.GetItems(pas.ldmap.Map.fCurrentSector.fTiles[i][i2]));
+        };
+      };
+      return Result;
+    };
+    this.FindNPC = function (ATarget) {
+      var $Self = this;
+      var Result = null;
+      var things = null;
+      Result = null;
+      things = pas.ldactor.CharactersVisible;
+      things = things.filter(function (e, i, a) {
+        var Result = false;
+        Result = rtl.getObject(e).GetAlive() && (rtl.getObject(e) !== pas.ldactor.Player) && (rtl.getObject(e).fPosition.Sub(ATarget).LengthSqr() < pas.System.Sqr$1(pas.ldconfig.Config.PlayerReach));
+        return Result;
+      });
+      if (things.length <= 0) return null;
+      things = things.sort(function (a, b) {
+        var Result = 0;
+        Result = Math.round(rtl.getObject(a).fPosition.Sub(ATarget).LengthSqr()) - Math.round(rtl.getObject(b).fPosition.Sub(ATarget).LengthSqr());
+        return Result;
+      });
+      Result = rtl.getObject(things[0]);
+      return Result;
+    };
+    this.FindUseTarget = function (ATarget) {
+      var $Self = this;
+      var Result = null;
+      var things = null;
+      Result = null;
+      things = this.FindBBsInSector();
+      things = things.filter(function (e, i, a) {
+        var Result = false;
+        Result = !rtl.getObject(e).fIsItem && (rtl.getObject(e).fPosition.Sub(ATarget).LengthSqr() < pas.System.Sqr$1(pas.ldconfig.Config.PlayerReach));
+        return Result;
+      });
+      if (things.length <= 0) return null;
+      things = things.sort(function (a, b) {
+        var Result = 0;
+        Result = Math.round(rtl.getObject(a).fPosition.Sub(ATarget).LengthSqr()) - Math.round(rtl.getObject(b).fPosition.Sub(ATarget).LengthSqr());
+        return Result;
+      });
+      Result = rtl.getObject(things[0]);
+      return Result;
+    };
+    this.FindItemTarget = function (ATarget) {
+      var $Self = this;
+      var Result = null;
+      var things = null;
+      Result = null;
+      things = this.FindBBsInSector();
+      things = things.filter(function (e, i, a) {
+        var Result = false;
+        Result = rtl.getObject(e).fIsItem && (rtl.getObject(e).fPosition.Sub(ATarget).LengthSqr() < pas.System.Sqr$1(pas.ldconfig.Config.PlayerReach));
+        return Result;
+      });
+      if (things.length <= 0) return null;
+      things = things.sort(function (a, b) {
+        var Result = 0;
+        Result = Math.round(rtl.getObject(a).fPosition.Sub(ATarget).LengthSqr()) - Math.round(rtl.getObject(b).fPosition.Sub(ATarget).LengthSqr());
+        return Result;
+      });
+      Result = rtl.getObject(things[0]);
+      return Result;
+    };
+    this.FindHarvestTarget = function (ATarget) {
+      var $Self = this;
+      var Result = null;
+      var tile = null;
+      var plants = null;
+      tile = pas.ldmap.Map.fCurrentSector.GetTileAt(pas.GameMath.TPVector.$clone(ATarget));
+      plants = new Array();
+      if (tile.HasComponent(pas.ldmap.FieldComp)) {
+        plants = pas.ldmap.FieldComp.GetPlants(tile)}
+       else if (tile.HasComponent(pas.ldmap.HopsComp)) plants = pas.ldmap.HopsComp.GetPlants(tile);
+      plants = plants.filter(function (e, i, a) {
+        var Result = false;
+        Result = rtl.getObject(e).GetReady() && (rtl.getObject(e).fPosition.Sub(ATarget).LengthSqr() < pas.System.Sqr$1(pas.ldconfig.Config.PlayerReach));
+        return Result;
+      });
+      if (plants.length <= 0) return null;
+      plants = plants.sort(function (a, b) {
+        var Result = 0;
+        Result = Math.round(rtl.getObject(a).fPosition.Sub(ATarget).LengthSqr()) - Math.round(rtl.getObject(b).fPosition.Sub(ATarget).LengthSqr());
+        return Result;
+      });
+      Result = rtl.getObject(plants[0]);
+      return Result;
+    };
+    this.PerformAction = function (ATarget) {
+      var targ = null;
+      var targharvest = null;
+      var char = null;
+      var $tmp = this.fCurrentAction;
+      if ($tmp === 1) {
+        pas.ldactor.Player.TriggerAttack()}
+       else if ($tmp === 2) {
+        char = this.FindNPC(pas.GameMath.TPVector.$clone(ATarget));
+        if (char !== null) {
+          this.TriggerDialog(char,char.fName,true);
+        } else this.WriteStatus("No one to talk to here");
+      } else if ($tmp === 3) {
+        targ = this.FindUseTarget(pas.GameMath.TPVector.$clone(ATarget));
+        if (targ !== null) {
+          var $tmp1 = targ.fSprite.fName;
+          if ($tmp1 === "well") {
+            if (this.RemoveInventory("icon-bucket",1)) {
+              this.AddInventory("icon-full-bucket",1);
+              this.fAudio.Play(pas.ldsounds.GetSound("drop"),1,false);
+            } else this.WriteStatus("You need a bucket for the water");
+          } else if ($tmp1 === "fireplace") {
+            this.TriggerDialog(null,"cauldron",true)}
+           else {
+            targ = null;
+          };
+        } else {
+          this.WriteStatus("Nothing to use here");
+          return;
+        };
+        if (targ === null) {
+          this.WriteStatus("Can not use this");
+          return;
+        };
+      } else if ($tmp === 4) {
+        targ = this.FindItemTarget(pas.GameMath.TPVector.$clone(ATarget));
+        targharvest = null;
+        if (targ === null) targharvest = this.FindHarvestTarget(pas.GameMath.TPVector.$clone(ATarget));
+        if (targ !== null) {
+          this.AddInventory(targ.fSprite.fName,1);
+          pas.ldmap.TileComp.RemoveBillboard(targ.fTile,targ);
+          this.fAudio.Play(pas.ldsounds.GetSound("pickup"),1,false);
+        } else if (targharvest !== null) {
+          if (this.HasInventory("icon-scythe",1)) {
+            targharvest.Harvest();
+            if (targharvest.GetName() === "barley") {
+              this.AddInventory("icon-barley",pas.ldconfig.Config.BarleyHarvest)}
+             else this.AddInventory("icon-hops",pas.ldconfig.Config.HopsHarvest);
+            this.fAudio.Play(pas.ldsounds.GetSound("harvest"),1,false);
+          } else this.WriteStatus("You do not have anything to harvest this with");
+        } else this.WriteStatus("Nothing to pick up here");
+      } else if ($tmp === 5) ;
     };
     this.ScreenToWorld = function (APoint) {
       var Result = pas.GameMath.TPVector.$new();
@@ -5676,11 +6348,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
                else if ($tmp1 === "player") {
                 this.StartSector = sec;
                 pas.ldactor.Player = ch;
-                if ((pas.ldactor.King != null) && (pas.ldactor.Player != null)) pas.ldai.KingBehavior.AddAnnoyance(pas.ldactor.King.fActor,pas.ldactor.Player.fActor,1000);
               } else if ($tmp1 === "king") {
                 pas.ldactor.King = ch;
                 pas.ldai.KingBehavior.SetHomeTile(ch.fActor,sec.fID,x,y);
-                if ((pas.ldactor.King != null) && (pas.ldactor.Player != null)) pas.ldai.KingBehavior.AddAnnoyance(pas.ldactor.King.fActor,pas.ldactor.Player.fActor,1000);
               };
             };
           };
@@ -5727,14 +6397,12 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.Inventory = pas.guictrls.TGUIInventory.$create("Create$3");
       this.Inventory.fItemWidth = rtl.trunc(350 / 3);
       this.Inventory.SetSize(0,60,350,200 - 60);
+      this.Inventory.fHoverColor.$assign(pas.GameBase.TGameColor.New(0.6,0.6,0.6,1.0));
       this.InvPanel.AddChild(this.Inventory);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-hops"),"idle",10);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-barley"),"idle",10);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-scythe"),"idle",1);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-reg"),"idle",1);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-med"),"idle",1);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-strong"),"idle",1337);
-      this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-suicide"),"idle",1);
+      this.Inventory.fOnClickItem = rtl.createCallback($Self,"ClickInventory");
+      this.AddInventory("icon-beer-reg",1);
+      this.AddInventory("icon-bucket",1);
+      this.AddInventory("icon-scythe",1);
       ActionPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       ActionPanel.SetSize(352,2,350,200 - 2);
       ActionPanel.fBackGround.$assign(PanelBG);
@@ -5744,6 +6412,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       AddAction(2,"Talk",0,50);
       AddAction(3,"Use",175,50);
       AddAction(4,"Pick up",0,100);
+      AddAction(5,"Drop",175,100);
       this.SetCurrentAction(1);
       this.SetCurrentAction(0);
     };
@@ -5758,7 +6427,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         Result = this.IntroElements}
        else if ($tmp === 1) {
         Result = pas.GameBase.TGameBase.GetElements.call(this)}
-       else if ($tmp === 2) Result = new Array();
+       else if ($tmp === 2) Result = this.DialogElements;
       return Result;
     };
     this.DoKeyPress = function (AKeyCode) {
@@ -5779,10 +6448,39 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           }});
         if (!h) {
           p.$assign(this.WindowToGround(pas.GameMath.TPVector.New(AX,AY,0)));
-          pas.System.Writeln(p.X," x ",p.Y," x ",p.Z);
           if (pas.ldactor.Player != null) pas.ldactor.Player.fTarget.$assign(p);
+          if (p.Sub(pas.ldactor.Player.fPosition).LengthSqr() <= pas.System.Sqr$1(pas.ldconfig.Config.PlayerReach)) this.PerformAction(pas.GameMath.TPVector.$clone(p));
         };
-      };
+      } else if ($tmp === 2) this.DialogGUI.DoClick(pas.guibase.TGUIPoint.$clone(pas.guibase.TGUIPoint.Create(AX,AY)),{get: function () {
+          return h;
+        }, set: function (v) {
+          h = v;
+        }});
+    };
+    this.DoMove = function (AX, AY) {
+      var h = false;
+      var c = null;
+      pas.GameBase.TGameBase.DoMove.call(this,AX,AY);
+      var $tmp = this.State;
+      if ($tmp === 1) {
+        this.MainGUI.DoMove(pas.guibase.TGUIPoint.$clone(pas.guibase.TGUIPoint.Create(AX,AY)),{get: function () {
+            return h;
+          }, set: function (v) {
+            h = v;
+          }},{get: function () {
+            return c;
+          }, set: function (v) {
+            c = v;
+          }})}
+       else if ($tmp === 2) this.DialogGUI.DoMove(pas.guibase.TGUIPoint.$clone(pas.guibase.TGUIPoint.Create(AX,AY)),{get: function () {
+          return h;
+        }, set: function (v) {
+          h = v;
+        }},{get: function () {
+          return c;
+        }, set: function (v) {
+          c = v;
+        }});
     };
     this.InitializeResources = function () {
       pas.GameBase.TGameBase.InitializeResources.call(this);
@@ -5797,7 +6495,11 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/guard.png");
       pas.resources.TResources.AddImage("assets\/Characters\/player.png");
       pas.resources.TResources.AddImage("assets\/well.png");
+      pas.resources.TResources.AddImage("assets\/fireplace.png");
       pas.resources.TResources.AddImage("assets\/castle.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBullet.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBucket.png");
+      pas.resources.TResources.AddImage("assets\/Icons\/IconBucketFull.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconHops.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconBarley.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconScythe.png");
@@ -5813,8 +6515,18 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddString("assets\/sprites-characters.json");
       pas.resources.TResources.AddString("assets\/sprites-buildings.json");
       pas.resources.TResources.AddString("assets\/sprites-misc.json");
+      pas.resources.TResources.AddString("assets\/dialog.json");
       pas.resources.TResources.AddString("assets\/config.json");
       pas.resources.TResources.AddString("assets\/map.json");
+      pas.ldsounds.AddSound("rake",pas.resources.TResources.AddSound("assets\/Audio\/proc_rake.m4a"));
+      pas.ldsounds.AddSound("drink",pas.resources.TResources.AddSound("assets\/Audio\/proc_drinkaah.m4a"));
+      pas.resources.TResources.AddSound("assets\/Audio\/proc_burp.m4a");
+      pas.resources.TResources.AddSound("assets\/Audio\/proc_clunk.m4a");
+      pas.ldsounds.AddSound("guardattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_guardattack.m4a"));
+      pas.ldsounds.AddSound("harvest",pas.resources.TResources.AddSound("assets\/Audio\/proc_harvest.m4a"));
+      pas.resources.TResources.AddSound("assets\/Audio\/proc_kingspeech.m4a");
+      pas.ldsounds.AddSound("pickup",pas.resources.TResources.AddSound("assets\/Audio\/proc_pickup.m4a"));
+      pas.ldsounds.AddSound("drop",pas.resources.TResources.AddSound("assets\/Audio\/proc_plop.m4a"));
     };
     this.AfterLoad = function () {
       var i = 0;
@@ -5825,6 +6537,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-characters.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-buildings.json").fString);
       pas.GameSprite.AddSprites(pas.resources.TResources.AddString("assets\/sprites-misc.json").fString);
+      this.DialogCfg = JSON.parse(pas.resources.TResources.AddString("assets\/dialog.json").fString);
       pas.ldmap.LoadTiles(pas.resources.TResources.AddString("assets\/tiles.json").fString);
       pas.GameFont.LoadFont("sans",pas.resources.TResources.AddString("assets\/custom-msdf.json").fString,pas.resources.TResources.AddImage("assets\/custom.png"));
       this.AddElement(pas.ECS.EntitySystem);
@@ -5833,6 +6546,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGUI.Resize(this.fWidth,this.fHeight);
       this.AddElement(this.MainGUI);
       this.MakeGUI();
+      this.MakeDialog();
       for (i = 0; i <= 3; i++) pas.ldmap.SectorArrows[i] = this.AddElement(pas.ldmap.TLDSectorButton.$create("Create$2",[i]));
       this.LoadMap(pas.resources.TResources.AddString("assets\/map.json").fString);
       pas.ldmap.Map.SetCurrentSector(this.StartSector);
@@ -5845,9 +6559,14 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         this.MainGUI.Resize(this.fWidth,this.fHeight);
         this.MainGuiPanel.SetSize(0,this.fHeight - 200,this.fWidth,200);
       };
+      if (this.DialogGUI !== null) {
+        this.DialogGUI.Resize(this.fWidth,this.fHeight);
+        this.DialogBackH.SetSize(0,0,this.fWidth,this.fHeight);
+      };
     };
     this.Create$1 = function () {
       pas.GameBase.TGameBase.Create$1.call(this);
+      this.DialogStack = new Array();
       this.IntroElements = new Array($mod.TText.$create("Create$1",[false]));
       return this;
     };

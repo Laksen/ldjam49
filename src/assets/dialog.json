@@ -1,23 +1,17 @@
 {
     "farmer": {
         "start": "Hello there brewer",
+        "icon": "farmer",
+        "animation": "idle",
         "entries": [
             {
                 "option": "Can I buy your current harvest?",
-                "cost": 20,
+                "gold": 20,
                 "trigger": "buy_harvest"
             },
             {
                 "option": "Tell me about something",
-                "subdialog": [
-                    {
-                        "option": "What's up with the king?",
-                        "response": ["Have you slept under a rock?",
-                                    "Well, noone knows exactly what happened",
-                                    "I think he went mad with power and greed believing people will work faster in the fields",
-                                    "Don't tell anyone but that is not the case"]
-                    }
-                ]
+                "subdialog": "farmer-moreinfo"
             },
             {
                 "option": "Would you like to buy some delicious beer?",
@@ -31,19 +25,54 @@
             }
         ]
     },
+    "farmer-moreinfo": {
+        "start": "Yes, what can I help you with?",
+        "icon": "farmer",
+        "animation": "idle",
+        "entries": [
+            {
+                "option": "What is up with the king?",
+                "subdialog": "farmer-lost"
+            }
+        ]
+    },
+    "farmer-lost": {
+        "start": "Have you slept under a rock?\nWell, noone knows exactly what.\nI think he went mad with power and\ngreed believing people will work faster in\nthe fields.\nDo not tell anyone but that is not the\ncase.",
+        "icon": "farmer",
+        "animation": "idle",
+        "entries": [
+        ]
+    },
+
     "cauldron": {
         "start": "Hmm, what should we brew today?",
+        "icon": "fireplace",
+        "animation": "idle",
         "entries": [
             {
                 "option": "Pilsner",
                 "trigger": "brew_pilsner",
                 "grain": 10,
                 "hops": 3
+            },
+            {
+                "option": "Ale",
+                "trigger": "brew_ale",
+                "grain": 15,
+                "hops": 4
+            },
+            {
+                "option": "Porter",
+                "trigger": "brew_porter",
+                "grain": 25,
+                "hops": 5
             }
         ]
     },
     "king": {
         "start": "What is it then, peasant?",
+        "icon": "king",
+        "animation": "idle",
         "entries": [
             {
                 "option": "Why have their highness outlawed beer?",

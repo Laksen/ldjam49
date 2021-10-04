@@ -59,6 +59,8 @@ end;
 
 procedure TGameAudio.Play(ASource: TJSHTMLAudioElement; AVolume: double; ALooping: boolean);
 begin
+  if asource=nil then exit;
+
   fSources.Add(TGameAudioSource.Create(ASource, AVolume, ALooping));
 end;
 

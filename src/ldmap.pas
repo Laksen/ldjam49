@@ -83,6 +83,8 @@ type
     procedure SetTile(AX,AY: longint; ATileType: TLDMapTileInfo);
     procedure SetTile(AX, AY: longint; const AName: string);
 
+    function GetTileAt(APos: TPVector): TLDSectorTile;
+
     property X: longint read fX;
     property Y: longint read fY;
     property ID: integer read fID;
@@ -112,6 +114,7 @@ type
     fSize: longint;
     fLastTime,fTime,fTimeOffset: Double;
     fSprite: TGameSprite;
+    function GetName: string;
     function GetReady: boolean;
   protected
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
@@ -121,13 +124,16 @@ type
 
     constructor Create(AX, AY: double; ASprite: TGameSprite; AMaxStage: longint);
 
+    property Name: string read GetName;
     property Size: longint read fSize;
     property Ready: boolean read GetReady;
   end;
 
   TBillboard = class(TGameElement)
   private
-    fLastTime,fTime,fTimeOffset: Double;
+    fIsItem: boolean;
+    fTile: TLDSectorTile;
+    fTime,fTimeOffset: Double;
     fSprite: TGameSprite;
     fAnimation: string;
     fWidth, fHeight: double;
@@ -135,7 +141,11 @@ type
     procedure Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
     procedure Update(AGame: TGameBase; ATimeMS: double); override;
   public
-    constructor Create(AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
+    constructor Create(ATile: TLDSectorTile; AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
+
+    property Tile: TLDSectorTile read fTile;
+    property Sprite: TGameSprite read fSprite;
+    property IsItem: boolean read fIsItem write fIsItem;
   end;
 
   TTileComponent = class(TECComponent)
@@ -148,14 +158,11 @@ type
     procedure SetInfo(ATile: TLDSectorTile; ASector, AX,AY: integer);
     procedure GetInfo(ATile: TLDSectorTile; var ASector, AX,AY: integer);
 
-    procedure AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double);
+    function AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double): TBillboard;
+    procedure RemoveBillboard(ATile: TLDSectorTile; ABillboard: TBillboard);
+    function GetItems(AEntity: TECEntity): TJSArray;
 
     procedure SetBillboardsVisible(AEntity: TECEntity; AVisible: boolean);
-  end;
-
-  TBillboardComponent = class(TECComponent)
-  private
-  public
   end;
 
   THarvestable = class(TECComponent)
@@ -175,6 +182,7 @@ type
 
     procedure Update(AEntity: TECEntity; ADeltaMS, ATimeMS: double); override;
   public
+    function GetPlants(AEntity: TECEntity): TJSArray;
     procedure SetPlantsVisible(AEntity: TECEntity; AVisible: boolean);
   end;
 
@@ -192,7 +200,12 @@ var
 
 procedure LoadTiles(const AInfo: string);
 
-procedure UpdateNeighbourSectors;
+procedure UpdateNeighbourSectors;   
+
+var
+  FieldComp,
+  HopsComp: TField;
+  TileComp: TTileComponent;
 
 implementation
 
@@ -204,10 +217,6 @@ var
 
   TileInfo: TLDMapTiles;
   Behaviors: TJSMap;
-
-var
-  FieldComp: TField;
-  TileComp: TTileComponent;
 
 procedure LoadTiles(const AInfo: string);
 begin
@@ -249,9 +258,10 @@ begin
   fTime:=ATimeMS / 1000;
 end;
 
-constructor TBillboard.Create(AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
+constructor TBillboard.Create(ATile: TLDSectorTile; AX, AY, AWidth, AHeight: double; ASprite: TGameSprite; AAnimation: string);
 begin
   inherited Create;
+  fTile:=ATile;
   fTimeOffset:=Random;
   Position:=TPVector.New(ax,ay);
   fSprite:=ASprite;
@@ -345,7 +355,7 @@ begin
   ay:=integer(data.get('y'));
 end;
 
-procedure TTileComponent.AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double);
+function TTileComponent.AddBillboard(ATile: TLDSectorTile; ASprite: TGameSprite; AAnimation: string; AWidth, AHeight: double): TBillboard;
 var
   bbs: TJSArray;
   s, x, y: integer;
@@ -357,10 +367,31 @@ begin
   GetInfo(ATile, s,x,y);
 
   SectorSize:=Config.SectorSize;
-  bb:=TBillboard.Create((x+0.5)*SectorSize,(y+0.5)*sectorsize, awidth, aheight, ASprite, AAnimation);
+  bb:=TBillboard.Create(ATile, (x+0.5)*SectorSize,(y+0.5)*sectorsize, awidth, aheight, ASprite, AAnimation);
   Game.AddElement(bb).Visible:=false;
 
   bbs.push(bb);
+
+  result:=bb;
+end;
+
+procedure TTileComponent.RemoveBillboard(ATile: TLDSectorTile; ABillboard: TBillboard);
+var
+  bbs: TJSArray;
+  idx: NativeInt;
+begin
+  bbs:=TJSArray(GetData(ATile).get('billboards'));
+
+  idx:=bbs.indexOf(ABillboard);
+  if idx>-1 then
+    bbs.splice(idx, 1);
+
+  Game.RemoveElement(ABillboard, true);
+end;
+
+function TTileComponent.GetItems(AEntity: TECEntity): TJSArray;
+begin
+  result:=TJSArray(GetData(AEntity).get('billboards'));
 end;
 
 procedure TTileComponent.SetBillboardsVisible(AEntity: TECEntity; AVisible: boolean);
@@ -402,8 +433,6 @@ begin
   inherited Render(GL, AViewport);
 
   if fCurrentSector=nil then exit;
-
-  //writeln('r');
 
   for i:=0 to Config.SectorTiles-1 do
     for i2:=0 to Config.SectorTiles-1 do
@@ -562,6 +591,21 @@ begin
   SetTile(AX,AY, TileInfo[AName]);
 end;
 
+function TLDSector.GetTileAt(APos: TPVector): TLDSectorTile;
+var
+  tileX, tiley: NativeInt;
+begin
+  tileX:=trunc(apos.X / config.SectorSize);
+  tiley:=trunc(apos.y / config.SectorSize);
+
+  if tileX<0 then tilex:=0;
+  if tileY<0 then tiley:=0;
+  if tilex>=Config.SectorTiles then tilex:=Config.SectorTiles-1;
+  if tileY>=Config.SectorTiles then tileY:=Config.SectorTiles-1;
+
+  result:=Tiles[tileX][tileY];
+end;
+
 constructor TLDMapTileInfo.Create(AInfo: TJSObject);
 begin
   inherited Create;
@@ -613,6 +657,11 @@ end;
 function TPlant.GetReady: boolean;
 begin
   result:= Size>=fMax;
+end;
+
+function TPlant.GetName: string;
+begin
+  result:=fSprite.Name;
 end;
 
 procedure TPlant.Render(GL: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -708,14 +757,17 @@ begin
   //writeln('Grow! ', GetData(AEntity).get('plants'));
 end;
 
+function TField.GetPlants(AEntity: TECEntity): TJSArray;
+begin
+  result:=TJSArray(GetData(AEntity).get('plants'));
+end;
+
 procedure TField.SetPlantsVisible(AEntity: TECEntity; AVisible: boolean);
 var
   el: JSValue;
   plants: TJSArray;
 begin
   plants:=TJSArray(GetData(AEntity).get('plants'));
-
-  writeln('Setting stuff ', AVisible);
 
   for el in plants do
     TGameElement(el).Visible:=AVisible;
@@ -726,8 +778,12 @@ initialization
 
   Behaviors:=TJSMap.new;
   Behaviors.&set('harvestable', EntitySystem.RegisterComponent(THarvestable));
-  Behaviors.&set('field', EntitySystem.RegisterComponent(TField));
-  Behaviors.&set('hops', EntitySystem.RegisterComponent(THops));
+
+  FieldComp:=TField(EntitySystem.RegisterComponent(TField));
+  HopsComp:=TField(EntitySystem.RegisterComponent(THops));
+
+  Behaviors.&set('field', FieldComp);
+  Behaviors.&set('hops', HopsComp);
 
   Map:=TLDMap.Create;
 

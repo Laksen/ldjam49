@@ -23,7 +23,8 @@ type
 
   TTextRun = record
     X,Y,
-    Width,Height: double;
+    Width,Height,
+    LineHeight: double;
     Texture: TGameTexture;
     Quads: TQuads;
     Text: string;
@@ -214,6 +215,7 @@ var
 begin            
   result.Width:=0;
   result.Height:=fLineHeight;
+  result.LineHeight:=fLineHeight;
   result.Texture:=fTexture;
   result.Text:=AStr;
   setlength(result.Quads, length(astr));

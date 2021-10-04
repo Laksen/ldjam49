@@ -51,6 +51,15 @@
             "billboards": [
                 { "sprite": "well", "animation": "idle", "width": 40, "height": 40 }
             ]
+        },
+        "fireplace":
+        {
+            "sprite": "grass",
+            "animation": "idle",
+            "behavior": [],
+            "billboards": [
+                { "sprite": "fireplace", "animation": "idle", "width": 40, "height": 40 }
+            ]
         }
     }
 }

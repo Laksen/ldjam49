@@ -211,6 +211,9 @@ var
 begin
   AllocateStuff(GL);
 
+  GL.enable(GL.BLEND);
+  GL.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
   vertices:=TJSFloat32Array.new(4*3);
   indices:=TJSUint16Array.new(2*3);
 
@@ -237,7 +240,7 @@ begin
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Elements);
 
   colorLoc:=gl.getUniformLocation(ColorShader.id, 'color');
-  GL.uniform4f(colorLoc, acolor.R,acolor.G,acolor.b,acolor.a);
+  GL.uniform4f(colorLoc, acolor.R, acolor.G, acolor.b, acolor.a);
 
   pmLoc:=gl.getUniformLocation(ColorShader.ID, 'projectionMatrix');
   mmLoc:=gl.getUniformLocation(ColorShader.ID, 'modelViewMatrix');
@@ -248,7 +251,9 @@ begin
   gl.vertexAttribPointer(vc,3,gl.FLOAT,false,0,0);
   gl.enableVertexAttribArray(vc);
 
-  gl.drawElements(gl.TRIANGLES,2*3,gl.UNSIGNED_SHORT,0);
+  gl.drawElements(gl.TRIANGLES,2*3,gl.UNSIGNED_SHORT,0);     
+
+  GL.disable(GL.BLEND);
 end;
 
 constructor TGameSprite.CreateJSON(const AInfo: TJSObject);

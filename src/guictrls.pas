@@ -67,40 +67,100 @@ type
     property HAlign: TGUILabelHAlign read fHAlign write fHAlign;
   end;
 
-  TGUIInventoryItem = class(TGUIElement)
+  TGUIInventoryItem = class(TGUIPanel)
   private
+    fHoverColor: TGameColor;
     fItem: TGameSprite;
     fItems: Integer;
     fAnimation: String;
-              
+
     fLabel: TGUILabel;
     procedure SetItems(const AValue: integer);
   protected
     procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+
+    procedure DoMouseEnter(const ACoord: TGUIPoint); override;
+    procedure DoMouseLeave(const ACoord: TGUIPoint); override;
   public
     procedure SetSize(AX, AY, AWidth, AHeight: longint); override;
 
     constructor Create(AItem: TGameSprite; AAnimation: string);
 
+    property HoverColor: TGameColor read fHoverColor write fHoverColor;
     property Item: TGameSprite read fItem;
     property Count: integer read fItems write SetItems;
     property Animation: string read fAnimation;
   end;
 
+  TInventoryClick = procedure(AItem: TGameSprite) of object;
+
   TGUIInventory = class(TGUIElement)
   private
+    fHoverColor: TGameColor;
     fItemHeight: integer;
     fItems: TJSArray;
     fItemWidth: integer;
+    fOnClickItem: TInventoryClick;
+    fChanged: boolean;
+    procedure ClickItem(ATarget: TGUIElement; const APosition: TGUIPoint);
     procedure RepackItems;
+  protected
+    procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
   public
     constructor Create;
 
-    procedure AddElements(AItem: TGameSprite; AAnimation: string; ACount: longint);
-    function RemoveElements(AItem: TGameSprite; AAnimation: string; ACount: longint): boolean;
+    procedure AddElements(AItem: TGameSprite; ACount: longint);
+    function RemoveElements(AItem: TGameSprite; ACount: longint): boolean;
+    function ElementCount(AItem: TGameSprite): longint;
 
     property ItemHeight: integer read fItemHeight write fItemHeight;
     property ItemWidth: integer read fItemWidth write fItemWidth;
+    property HoverColor: TGameColor read fHoverColor write fHoverColor;
+
+    property OnClickItem: TInventoryClick read fOnClickItem write fOnClickItem;
+  end;
+
+  TDialogClick = procedure(AIndex: longint) of object;
+
+  TGUIDialogOption = class(TGUIPanel)
+  private
+    fIndex: longint;
+    fHoverColor: TGameColor;
+    fText: String;
+
+    fLabel: TGUILabel;
+  protected
+    procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+
+    procedure DoMouseEnter(const ACoord: TGUIPoint); override;
+    procedure DoMouseLeave(const ACoord: TGUIPoint); override;
+  public
+    constructor Create(AIndex: longint; AText: string);
+
+    procedure SetSize(AX, AY, AWidth, AHeight: longint); override;
+
+    property Index: longint read fIndex;   
+    property HoverColor: TGameColor read fHoverColor write fHoverColor;
+  end;
+
+  TGUIDialogs = class(TGUIPanel)
+  private
+    fHoverColor: TGameColor;
+    fItemHeight: integer;
+    fOnClickItem: TDialogClick;
+    procedure ClickItem(ATarget: TGUIElement; const APosition: TGUIPoint);
+  protected
+    procedure Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); override;
+  public
+    constructor Create;
+
+    procedure Clear;
+    procedure AddItem(AIndex: longint; const AText: string);
+
+    property ItemHeight: integer read fItemHeight write fItemHeight;
+    property HoverColor: TGameColor read fHoverColor write fHoverColor;
+
+    property OnClickItem: TDialogClick read fOnClickItem write fOnClickItem;
   end;
 
 implementation
@@ -116,6 +176,91 @@ begin
   result[3]:=APosition.Add(TPVector.new(0,      AHeight));
 end;
 
+procedure TGUIDialogOption.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+begin
+  inherited Render(AContext, AViewport);
+  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Height,Height), GetSprite('icon-bullet').GetFrame('idle', 0));
+end;
+
+procedure TGUIDialogOption.DoMouseEnter(const ACoord: TGUIPoint);
+begin
+  inherited DoMouseEnter(ACoord);
+  BackGround:=HoverColor;
+end;
+
+procedure TGUIDialogOption.DoMouseLeave(const ACoord: TGUIPoint);
+begin                      
+  BackGround:=TGameColor.Transparent;
+  inherited DoMouseLeave(ACoord);
+end;       
+
+procedure TGUIDialogOption.SetSize(AX, AY, AWidth, AHeight: longint);
+begin
+  inherited SetSize(AX, AY, AWidth, AHeight);
+  fLabel.Size:=Height;
+  fLabel.SetSize(Height,0,10000,Height);
+end;
+
+constructor TGUIDialogOption.Create(AIndex: longint; AText: string);
+begin
+  inherited Create;
+  fText:=AText;
+  fIndex:=AIndex;
+
+  fHoverColor:=TGameColor.Transparent;
+  BackGround:=TGameColor.Transparent;
+
+  fLabel:=TGUILabel.Create;
+  AddChild(fLabel);
+  fLabel.HitTestVisible:=false;
+  fLabel.SetSize(Height,0,10000,Height);
+  fLabel.Caption:=AText;
+end;
+
+procedure TGUIDialogs.ClickItem(ATarget: TGUIElement; const APosition: TGUIPoint);
+var
+  res: TGUIDialogOption;
+begin
+  res:=TGUIDialogOption(atarget);
+  if fOnClickItem<>Nil then
+    fOnClickItem(res.Index);
+end;
+
+procedure TGUIDialogs.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
+begin
+  inherited Render(AContext, AViewport);
+end;
+
+constructor TGUIDialogs.Create;
+begin
+  inherited Create;
+end;
+
+procedure TGUIDialogs.Clear;
+var
+  c: TGUIElement;
+  i: LongInt;
+begin
+  for i:=ChildCount-1 downto 0 do
+  begin
+    c:=Child[i];
+    RemoveChild(c);
+    c.free;
+  end;
+end;
+
+procedure TGUIDialogs.AddItem(AIndex: longint; const AText: string);
+var
+  c: TGUIDialogOption;
+begin
+  c:=TGUIDialogOption.Create(aindex, atext);
+  c.SetSize(0,ChildCount*ItemHeight,Width,itemheight);
+  c.OnClick:=@ClickItem;                    
+  c.HoverColor:=fHoverColor;
+
+  AddChild(c);
+end;
+
 procedure TGUIInventoryItem.SetItems(const AValue: integer);
 begin
   if fItems=AValue then Exit;
@@ -126,26 +271,41 @@ end;
 
 procedure TGUIInventoryItem.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 begin
-  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Height,Height), fItem.GetFrame(fAnimation, 0));
   inherited Render(acontext, AViewport);
+  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Height,Height), fItem.GetFrame(fAnimation, 0));
+end;
+
+procedure TGUIInventoryItem.DoMouseEnter(const ACoord: TGUIPoint);
+begin
+  inherited DoMouseEnter(ACoord);
+  BackGround:=HoverColor;
+end;
+
+procedure TGUIInventoryItem.DoMouseLeave(const ACoord: TGUIPoint);
+begin
+  BackGround:=TGameColor.Transparent;
+  inherited DoMouseLeave(ACoord);
 end;
 
 procedure TGUIInventoryItem.SetSize(AX, AY, AWidth, AHeight: longint);
 begin
   inherited SetSize(AX, AY, AWidth, AHeight);
-  fLabel.Size:=Height;;
+  fLabel.Size:=Height;
   fLabel.SetSize(Height,0,10000,Height);
 end;
 
 constructor TGUIInventoryItem.Create(AItem: TGameSprite; AAnimation: string);
 begin
   inherited Create;
+  fHoverColor:=TGameColor.Transparent;
+  BackGround:=TGameColor.Transparent;
   fItem:=AItem;
   fItems:=0;
   fAnimation:=AAnimation;
 
   fLabel:=TGUILabel.Create;
   AddChild(fLabel);
+  fLabel.HitTestVisible:=false;
   fLabel.SetSize(Height,0,10000,Height);
   fLabel.Caption:='0';
 end;
@@ -162,8 +322,8 @@ begin
   for el in fItems do
   begin
     e:=TGUIInventoryItem(el);
-
     e.SetSize(x,y,fItemWidth,fItemHeight);
+
     x:=x+fItemWidth;
     if (x+fItemWidth-1)>=Width then
     begin
@@ -171,6 +331,49 @@ begin
       x:=0;
     end;
   end;
+end;
+
+procedure TGUIInventory.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport); 
+var
+  el: JSValue;
+  e: TGUIInventoryItem;
+  toFree: TJSArray;
+  idx: NativeInt;
+begin                                   
+  if fChanged then
+  begin
+    toFree:=TJSArray.new;
+
+    for el in fItems do
+    begin
+      e:=TGUIInventoryItem(el);
+      if e.Count<=0 then
+      begin
+        toFree.push(el);
+        RemoveChild(e);
+      end;
+    end;
+
+    for el in toFree do
+    begin
+      idx:=fItems.indexOf(el);
+      fItems.splice(idx, 1);
+
+      e:=TGUIInventoryItem(el);
+      e.Free;
+    end;
+
+    RepackItems;
+    fchanged:=false;
+  end;
+
+  inherited Render(AContext, AViewport);
+end;
+
+procedure TGUIInventory.ClickItem(ATarget: TGUIElement; const APosition: TGUIPoint);
+begin
+  if assigned(fOnClickItem) then
+    fOnClickItem(TGUIInventoryItem(ATarget).Item);
 end;
 
 constructor TGUIInventory.Create;
@@ -181,7 +384,7 @@ begin
   fItemWidth:=70;
 end;
 
-procedure TGUIInventory.AddElements(AItem: TGameSprite; AAnimation: string; ACount: longint);
+procedure TGUIInventory.AddElements(AItem: TGameSprite; ACount: longint);
 var
   el: JSValue;
   e: TGUIInventoryItem;
@@ -190,23 +393,24 @@ begin
   begin
     e:=TGUIInventoryItem(el);
 
-    if (e.Item=AItem) and (e.Animation=AAnimation) then
+    if (e.Item=AItem) then
     begin
       e.Count:=e.Count + acount;
       exit;
     end;
   end;
 
-  e:=TGUIInventoryItem.Create(AItem,AAnimation);
+  e:=TGUIInventoryItem.Create(AItem,'idle');
   e.Count:=ACount;
+  e.OnClick:=@ClickItem;
+  e.HoverColor:=fHoverColor;
   fItems.push(e);
 
   AddChild(e);
-
-  RepackItems;
+  fchanged:=true;
 end;
 
-function TGUIInventory.RemoveElements(AItem: TGameSprite; AAnimation: string; ACount: longint): boolean;
+function TGUIInventory.RemoveElements(AItem: TGameSprite; ACount: longint): boolean;
 var
   el: JSValue;
   e: TGUIInventoryItem;
@@ -215,23 +419,34 @@ begin
   begin
     e:=TGUIInventoryItem(el);
 
-    if (e.Item=AItem) and (e.Animation=AAnimation) then
+    if (e.Item=AItem) then
     begin
       if e.count>=ACount then
       begin
-        e.Count:=e.Count - acount;
-        if e.Count<=0 then
-        begin
-          RemoveChild(e);
-          e.Free;
-          RepackItems;
-        end;
+        e.Count:=e.Count - acount; 
+        fchanged:=true;
         exit(true);
       end
       else
         exit(false);
     end;
   end;
+end;
+
+function TGUIInventory.ElementCount(AItem: TGameSprite): longint;
+var
+  el: JSValue;
+  e: TGUIInventoryItem;
+begin
+  for el in fItems do
+  begin
+    e:=TGUIInventoryItem(el);
+
+    if (e.Item=AItem) then
+      exit(e.Count);
+  end;
+
+  result:=0;
 end;
 
 procedure TGUIPanel.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
@@ -281,7 +496,7 @@ var
   SubViewPort: TGameViewport;
   H, Scaling: Double;
 begin                                                
-  H:=fTextRun.Height-fTextRun.Y;
+  H:=fTextRun.LineHeight-fTextRun.Y;
   Scaling:=fSize / H;
 
   SubViewPort:=AViewport;
@@ -313,7 +528,8 @@ end;
 
 procedure TGUIImage.Render(AContext: TJSWebGLRenderingContext; const AViewport: TGameViewport);
 begin
-  RenderFrame(AContext, AViewport, GetScreenQuad(Position, Width,Height), fSprite.GetFrame(fAnimation, fTime));
+  if Sprite<>nil then
+    RenderFrame(AContext, AViewport, GetScreenQuad(Position, Width,Height), fSprite.GetFrame(fAnimation, fTime));
   inherited Render(AContext, AViewport);
 end;
 

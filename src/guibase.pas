@@ -304,6 +304,8 @@ end;
 
 procedure TGUIElement.RemoveChild(AChild: TGUIElement);
 begin
+  NotifyRemovedSubchild(achild);
+
   AChild.Parent:=nil;
   fChildren.Remove(AChild);
 end;

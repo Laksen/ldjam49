@@ -32,5 +32,19 @@
                 {"frame": 2, "time": 0.25}
             ]
         }
+    },
+    {
+        "name": "fireplace",
+        "texture": "assets/fireplace.png",
+        "tile-width": 256,
+        "tile-height": 256,
+        "animations": {
+            "idle": [
+                {"frame": 0, "time": 0.25},
+                {"frame": 1, "time": 0.25},
+                {"frame": 2, "time": 0.25},
+                {"frame": 3, "time": 0.25}
+            ]
+        }
     }
 ]

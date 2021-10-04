@@ -9,14 +9,16 @@
             "speed": 60,
             "damage": 10,
             "behavior": ["player"],
-            "sprite": "player"
+            "sprite": "player",
+            "attacksound": "playerattack"
         },
         "farmer": {
             "hp": 20,
             "speed": 40,
             "damage": 5,
             "behavior": ["farmer"],
-            "sprite": "farmer"
+            "sprite": "farmer",
+            "attacksound": "guardattack"
         },
         "peasant": {
             "hp": 20,
@@ -30,7 +32,8 @@
             "speed": 50,
             "damage": 10,
             "behavior": ["guard"],
-            "sprite": "guard"
+            "sprite": "guard",
+            "attacksound": "guardattack"
         },
         "king": {
             "hp": 150,

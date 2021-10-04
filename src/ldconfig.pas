@@ -12,7 +12,12 @@ type
   TConfig = record
     SectorTiles,
     SectorSize,
-    GrowthTime: longint;
+    GrowthTime,
+
+    BarleyHarvest,
+    HopsHarvest: longint;
+
+    PlayerReach,
 
     PlayerAnnoyanceLevel,
     PlayerAttackRange,
@@ -60,9 +65,12 @@ begin
   Config.SectorTiles:=TryGet(fInfo,'SectorTiles',3);
   Config.SectorSize:=TryGet(fInfo,'SectorSize',150);
   Config.GrowthTime:=TryGet(fInfo,'GrowthTime',10);
+  Config.BarleyHarvest:=TryGet(fInfo,'BarleyHarvest',3);
+  Config.HopsHarvest:=TryGet(fInfo,'HopsHarvest',2);
 
+  Config.PlayerReach:=TryGetDouble(fInfo,'PlayerReach',30);
   Config.PlayerAnnoyanceLevel:=TryGetDouble(fInfo,'PlayerAnnoyanceLevel',2);
-  Config.PlayerAttackRange:=TryGetDouble(fInfo,'PlayerAttackRange',200);
+  Config.PlayerAttackRange:=TryGetDouble(fInfo,'PlayerAttackRange',100);
   Config.KingAnnoyanceLevel:=TryGetDouble(fInfo,'KingAnnoyanceLevel',10);
   Config.DamageRange:=TryGetDouble(fInfo,'DamageRange',200);
   config.DamageAnnoyanceRatio:=TryGetDouble(fInfo,'DamageAnnoyanceRatio',1);

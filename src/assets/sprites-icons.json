@@ -27,6 +27,33 @@
         }
     },
     {
+        "name": "icon-bucket",
+        "texture": "assets/Icons/IconBucket.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-full-bucket",
+        "texture": "assets/Icons/IconBucketFull.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
+        "name": "icon-bullet",
+        "texture": "assets/Icons/IconBullet.png",
+        "tile-width": 64,
+        "tile-height": 64,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
         "name": "icon-beer-reg",
         "texture": "assets/Icons/IconBeerREG.png",
         "tile-width": 64,

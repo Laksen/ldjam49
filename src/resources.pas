@@ -102,7 +102,7 @@ begin
         TResourceTexture(TResource(el).TargetObj).Load(TJSHTMLImageElement(event.target));
   end;
 
-  console.log('Loaded '+source);
+  //console.log('Loaded '+source);
 
   inc(LoadedCount);
   result:=true;
@@ -139,7 +139,7 @@ begin
       image.src := objectURL;
       document.body.appendChild(image);}
 
-      console.Log('Loaded '+ASrc);
+      //console.Log('Loaded '+ASrc);
     end;
   except
     console.log(JSExceptValue);

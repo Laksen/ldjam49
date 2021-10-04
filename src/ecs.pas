@@ -163,7 +163,7 @@ begin
   idx:=Components.indexOf(AComponent);
   if idx>-1 then
   begin
-    Components:=Components.splice(idx,1);
+    Components.splice(idx,1);
 
     AComponent.DeInit(self);
   end;
@@ -237,7 +237,7 @@ var
 begin                 
    idx:=fEntities.indexOf(AEntity);
    if idx>-1 then
-     fEntities:=fEntities.splice(idx,1);
+     fEntities.splice(idx,1);
 end;
 
 initialization

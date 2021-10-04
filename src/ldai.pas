@@ -30,7 +30,7 @@ type
 
   THomeTileBehavior = class(TNPCBehavior)
   private const
-    UpdateInterval = 3;
+    UpdateInterval = 5;
   protected
     procedure Init(AEntity: TECEntity); override;
 
@@ -59,6 +59,9 @@ var
   PlayerBehavior: TPlayerBehavior;
 
 implementation
+
+uses
+  GameBase, ldsounds;
 
 procedure TNPCBehavior.DoAttack(AEntity, ATarget: TLDActor);
 var
@@ -213,6 +216,9 @@ begin
 
             newCoord:=TPVector.New((x+random)*Config.SectorSize*0.99+0.01, (y+random)*Config.SectorSize*0.99+0.01);
             char.Target:=newCoord;
+
+            if char.Visible then
+              Game.Audio.Play(GetSound('rake'), 0.3);
 
             ent.&set('last-update', ATimeMS-1000*random);
           end;

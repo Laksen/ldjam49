@@ -7,7 +7,7 @@ interface
 uses
   GameBase, GameSprite, GameMath,
   ECS,
-  JS, webgl,
+  JS, web, webgl,
   Classes, SysUtils;
 
 type
@@ -25,6 +25,7 @@ type
   TLDCharacter = class(TGameElement)
   private
     fAttacking: boolean;
+    fAttackSound: TJSHTMLAudioElement;
     fBaseDamage: double;
     fGold: longint;
     fHP: double;
@@ -62,6 +63,8 @@ type
     // Movement
     property Target: TPVector read fTarget write fTarget;
     property Attacking: boolean read fAttacking;
+
+    property AttackSound: TJSHTMLAudioElement read fAttackSound write fAttackSound;
   end;
 
 var
@@ -70,6 +73,7 @@ var
   Player,
   King: TLDCharacter;
 
+  CharactersVisible,
   Characters: TJSarray;
 
   Behaviors: TJSMap;
@@ -87,6 +91,7 @@ procedure ShowCharacters(ASector: longint);
 implementation
 
 uses
+  ldsounds,
   ldconfig;
 
 procedure ConfigureCharacter(AChar: TLDCharacter; const AType: string);
@@ -99,6 +104,8 @@ begin
   AChar.HP:=double(cfg['hp']);
   AChar.Speed:=double(cfg['speed']);
   AChar.BaseDamage:=double(cfg['damage']);
+
+  AChar.AttackSound:=GetSound(string(cfg['attacksound']));
 
   AChar.Target:=AChar.Position;
 
@@ -153,9 +160,7 @@ function SpawnCharacter(const AName, AType: string; ASector, AX, AY: integer): T
 begin
   SectorMax:=Config.SectorSize*config.SectorTiles;
 
-  Writeln('Spawning ', atype);
-
-  result:=TLDCharacter.Create(AName, GetCharacterSprite(AType), ASector, ax,ay);
+  result:=TLDCharacter.Create(AType, GetCharacterSprite(AType), ASector, ax,ay);
   Characters.push(result);
 
   ConfigureCharacter(result, atype);
@@ -173,8 +178,13 @@ procedure ShowCharacters(ASector: longint);
 var
   ch: JSValue;
 begin
+  CharactersVisible:=TJSArray.new;
   for ch in Characters do
+  begin
     TLDCharacter(ch).Visible:=TLDCharacter(ch).Sector=ASector;
+    if TLDCharacter(ch).Sector=ASector then
+      CharactersVisible.push(TLDCharacter(ch));
+  end;
 end;
 
 constructor TLDActor.Create(ASystem: TECSystem; ACharacter: TLDCharacter);
@@ -262,6 +272,9 @@ function TLDCharacter.TriggerAttack: boolean;
 begin
   if fAttacking then
     exit(false);
+
+  if (AttackSound<>Nil) and Visible then
+    Game.Audio.play(AttackSound, 1);
 
   fAttackTime:=fTime;
   fAttacking:=true;
