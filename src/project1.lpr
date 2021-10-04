@@ -248,6 +248,10 @@ begin
       Inventory.AddElements(GetSprite('icon-hops'), 'idle', 10);
       Inventory.AddElements(GetSprite('icon-barley'), 'idle', 10);
       Inventory.AddElements(GetSprite('icon-scythe'), 'idle', 1);
+      Inventory.AddElements(GetSprite('icon-beer-reg'), 'idle', 1);
+      Inventory.AddElements(GetSprite('icon-beer-med'), 'idle', 1);
+      Inventory.AddElements(GetSprite('icon-beer-strong'), 'idle', 1337);
+      Inventory.AddElements(GetSprite('icon-beer-suicide'), 'idle', 1);
 
     ActionPanel:=TGUIPanel.Create;
     ActionPanel.SetSize(352,2,350, GUIHeight-2);
@@ -324,6 +328,10 @@ begin
   TResources.AddImage('assets/Icons/IconHops.png');
   TResources.AddImage('assets/Icons/IconBarley.png');
   TResources.AddImage('assets/Icons/IconScythe.png');
+  TResources.AddImage('assets/Icons/IconBeerREG.png');
+  TResources.AddImage('assets/Icons/IconBeerMED.png');
+  TResources.AddImage('assets/Icons/IconBeerSTRONG.png');
+  TResources.AddImage('assets/Icons/IconBeerSuicide.png');
 
   TResources.AddImage('assets/bld.png');
 
