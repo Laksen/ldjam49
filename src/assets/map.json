@@ -2,7 +2,10 @@
     "castle": {
         "location": [1002,1001],
         "default": "grass",
-
+        
+        "3": {
+            "spawn": ["guard"]
+        },
 
         "4": {
             "tile": "castle",
@@ -10,7 +13,8 @@
         },
         
         "6": {
-            "tile": "castlewall"
+            "tile": "castlewall",
+            "spawn": ["guard"]
         },
         "7": {
             "tile": "castlegate"
@@ -122,7 +126,7 @@
             "spawn": ["farmer"]
         },
         "2": {
-            "spawn": ["farmer", "farmer"]
+            "spawn": ["guard", "guard"]
         },
 
         "8": {
