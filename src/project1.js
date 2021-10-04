@@ -6071,9 +6071,11 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       var $Self = this;
       var curr = null;
       var selected = null;
-      function Consume(agrain, ahops) {
+      function Consume(agrain, ahops, awater) {
         $Self.Inventory.RemoveElements(pas.GameSprite.GetSprite("icon-barley"),agrain);
         $Self.Inventory.RemoveElements(pas.GameSprite.GetSprite("icon-hops"),ahops);
+        $Self.Inventory.RemoveElements(pas.GameSprite.GetSprite("icon-full-bucket"),awater);
+        $Self.Inventory.AddElements(pas.GameSprite.GetSprite("icon-bucket"),awater);
       };
       curr = this.DialogStack[this.DialogStack.length - 1];
       if (AIndex === -1) {
@@ -6093,13 +6095,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           else if ($tmp === "buy_beer") {}
           else if ($tmp === "give_beer") {}
           else if ($tmp === "brew_pilsner") {
-            Consume(10,3);
+            Consume(10,3,1);
             this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-reg"),2);
           } else if ($tmp === "brew_ale") {
-            Consume(15,4);
+            Consume(15,4,1);
             this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-med"),2);
           } else if ($tmp === "brew_porter") {
-            Consume(30,10);
+            Consume(30,10,1);
             this.Inventory.AddElements(pas.GameSprite.GetSprite("icon-beer-strong"),2);
           };
         } else pas.System.Writeln("Dead end?!");
@@ -6129,8 +6131,9 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         avail = true;
         if (ent2["gold"] != undefined) avail = avail && (rtl.trunc(ent2["gold"]) <= pas.ldactor.Player.fGold);
         if (ent2["beer"] != undefined) avail = avail && this.HasBeer() && this.WantsBeer(this.DialogTarget);
-        if (ent2["grain"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-barley")) > rtl.trunc(ent2["grain"]));
-        if (ent2["hops"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-hops")) > rtl.trunc(ent2["hops"]));
+        if (ent2["grain"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-barley")) >= rtl.trunc(ent2["grain"]));
+        if (ent2["hops"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-hops")) >= rtl.trunc(ent2["hops"]));
+        if (ent2["water"] != undefined) avail = avail && (this.Inventory.ElementCount(pas.GameSprite.GetSprite("icon-full-bucket")) >= rtl.trunc(ent2["water"]));
         if (avail) this.DialogOptions.AddItem(idx,"" + ent2["option"]);
         idx += 1;
       };
