@@ -73,13 +73,13 @@ begin
   Config.HopsHarvest:=TryGet(fInfo,'HopsHarvest',2);
 
   config.HealingFactor:=TryGetDouble(fInfo,'HealingFactor',0.05);
-  config.BacLowering:=TryGetDouble(fInfo,'BacLowering',0.0005);
+  config.BacLowering:=TryGetDouble(fInfo,'BacLowering',0.1);
 
   Config.PlayerReach:=TryGetDouble(fInfo,'PlayerReach',30);
   Config.PlayerAnnoyanceLevel:=TryGetDouble(fInfo,'PlayerAnnoyanceLevel',2);
   Config.PlayerAttackRange:=TryGetDouble(fInfo,'PlayerAttackRange',100);
   Config.KingAnnoyanceLevel:=TryGetDouble(fInfo,'KingAnnoyanceLevel',10);
-  Config.DamageRange:=TryGetDouble(fInfo,'DamageRange',200);
+  Config.DamageRange:=TryGetDouble(fInfo,'DamageRange',40);
   config.DamageAnnoyanceRatio:=TryGetDouble(fInfo,'DamageAnnoyanceRatio',1);
   Config.AnnoyanceCooldown:=TryGetDouble(fInfo,'AnnoyanceCooldown',0.9);
 

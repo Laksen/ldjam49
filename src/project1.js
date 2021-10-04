@@ -4969,12 +4969,12 @@ rtl.module("ldconfig",["System","JS","Classes","SysUtils"],function () {
     $mod.Config.BarleyHarvest = $impl.TryGet(fInfo,"BarleyHarvest",3);
     $mod.Config.HopsHarvest = $impl.TryGet(fInfo,"HopsHarvest",2);
     $mod.Config.HealingFactor = $impl.TryGetDouble(fInfo,"HealingFactor",0.05);
-    $mod.Config.BacLowering = $impl.TryGetDouble(fInfo,"BacLowering",0.0005);
+    $mod.Config.BacLowering = $impl.TryGetDouble(fInfo,"BacLowering",0.1);
     $mod.Config.PlayerReach = $impl.TryGetDouble(fInfo,"PlayerReach",30);
     $mod.Config.PlayerAnnoyanceLevel = $impl.TryGetDouble(fInfo,"PlayerAnnoyanceLevel",2);
     $mod.Config.PlayerAttackRange = $impl.TryGetDouble(fInfo,"PlayerAttackRange",100);
     $mod.Config.KingAnnoyanceLevel = $impl.TryGetDouble(fInfo,"KingAnnoyanceLevel",10);
-    $mod.Config.DamageRange = $impl.TryGetDouble(fInfo,"DamageRange",200);
+    $mod.Config.DamageRange = $impl.TryGetDouble(fInfo,"DamageRange",40);
     $mod.Config.DamageAnnoyanceRatio = $impl.TryGetDouble(fInfo,"DamageAnnoyanceRatio",1);
     $mod.Config.AnnoyanceCooldown = $impl.TryGetDouble(fInfo,"AnnoyanceCooldown",0.9);
     $mod.Config.Characters = new Map();
@@ -5284,7 +5284,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
       if (this.fAttacking) if ((this.fTime - this.fAttackTime) >= this.fSprite.GetAnimation(this.fAnimation).fLooptime) {
         this.fAttacking = false;
         this.fAnimation = "idle";
-        $mod.DamageAt($Self,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.GetDamage());
+        $mod.DamageAt($Self,this.fSector,pas.GameMath.TPVector.$clone(this.fPosition),this.GetDamage(),false);
       };
       if (!this.fAttacking) {
         fMoveDiff.$assign(this.fTarget.Sub(this.fPosition));
@@ -5351,7 +5351,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
     Result = "Bob";
     return Result;
   };
-  this.DamageAt = function (AGiver, ASector, APosition, ADamage) {
+  this.DamageAt = function (AGiver, ASector, APosition, ADamage, AOnlyAnnoy) {
     var sqrDist = 0.0;
     var ch = null;
     var o = undefined;
@@ -5364,7 +5364,7 @@ rtl.module("ldactor",["System","GameBase","GameSprite","GameMath","ECS","JS","We
     });
     for (var $in = ch, $l = 0, $end = rtl.length($in) - 1; $l <= $end; $l++) {
       o = $in[$l];
-      rtl.getObject(o).DealDamage(ADamage);
+      if (!AOnlyAnnoy) rtl.getObject(o).DealDamage(ADamage);
       oo = rtl.getObject(o);
       if (oo !== $mod.Player) {
         if (oo.fActor.HasComponent(pas.ldai.KingBehavior)) pas.ldai.KingBehavior.AddAnnoyance(oo.fActor,AGiver.fActor,ADamage * pas.ldconfig.Config.DamageAnnoyanceRatio);
@@ -6281,7 +6281,10 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           s = 2.0}
          else if ($tmp1 === "icon-beer-suicide") s = 5;
         var $tmp2 = AItem.fName;
-        if (($tmp2 === "icon-beer-reg") || ($tmp2 === "icon-beer-med") || ($tmp2 === "icon-beer-strong") || ($tmp2 === "icon-beer-suicide")) {
+        if ($tmp2 === "icon-paper") {
+          this.TriggerDialog(null,"instructions",true);
+          this.RemoveInventory(AItem.fName,1);
+        } else if (($tmp2 === "icon-beer-reg") || ($tmp2 === "icon-beer-med") || ($tmp2 === "icon-beer-strong") || ($tmp2 === "icon-beer-suicide")) {
           pas.ldactor.Player.DrinkBeer(s);
           pas.GameBase.Game().fAudio.Play(pas.ldsounds.GetSound("drink"),0.8,false);
           this.RemoveInventory(AItem.fName,1);
@@ -6439,6 +6442,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
           this.fAudio.Play(pas.ldsounds.GetSound("pickup"),1,false);
         } else if (targharvest !== null) {
           if (this.HasInventory("icon-scythe",1)) {
+            pas.ldactor.DamageAt(pas.ldactor.Player,pas.ldmap.Map.fCurrentSector.fID,pas.GameMath.TPVector.$clone(pas.ldactor.Player.fPosition),10,true);
             targharvest.Harvest();
             if (targharvest.GetName() === "barley") {
               this.AddInventory("icon-barley",pas.ldconfig.Config.BarleyHarvest)}
@@ -6572,9 +6576,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.InvPanel.AddChild(this.Inventory);
       this.Inventory.fOnClickItem = rtl.createCallback($Self,"ClickInventory");
       this.AddInventory("icon-beer-reg",1);
-      this.AddInventory("icon-bucket",1);
-      this.AddInventory("icon-scythe",1);
-      this.AddInventory("icon-beer-strong",10);
+      this.AddInventory("icon-paper",1);
       ActionPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       ActionPanel.SetSize(352,2,350,200 - 2);
       ActionPanel.fBackGround.$assign(PanelBG);
@@ -6603,6 +6605,8 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       var x = pas.GameBase.TGameColor.$new();
       pas.GameBase.TGameBase.Update.call(this,ATimeMS);
       this.InvGoldLabel.SetCaption(pas.SysUtils.Format("Gold: %d",pas.System.VarRecs(0,pas.ldactor.Player.fGold)));
+      if ((this.State === 1) && !pas.ldactor.Player.GetAlive()) this.TriggerDialog(undefined,"dead",true);
+      if ((this.State === 1) && !pas.ldactor.King.GetAlive()) this.TriggerDialog(undefined,"king-dead",true);
       x.$assign(this.StatusLabel.fColor);
       x.A = x.A - ((ATimeMS - $mod.fTime) / 1000);
       if (x.A < 0) x.A = 0;
@@ -6705,11 +6709,12 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddImage("assets\/hops.png");
       pas.resources.TResources.AddImage("assets\/Characters\/peasant.png");
       pas.resources.TResources.AddImage("assets\/Characters\/king.png");
-      pas.resources.TResources.AddImage("assets\/guard.png");
+      pas.resources.TResources.AddImage("assets\/Characters\/guard.png");
       pas.resources.TResources.AddImage("assets\/Characters\/player.png");
       pas.resources.TResources.AddImage("assets\/well.png");
       pas.resources.TResources.AddImage("assets\/fireplace.png");
       pas.resources.TResources.AddImage("assets\/castle.png");
+      pas.resources.TResources.AddImage("assets\/paper.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconBullet.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconBucket.png");
       pas.resources.TResources.AddImage("assets\/Icons\/IconBucketFull.png");

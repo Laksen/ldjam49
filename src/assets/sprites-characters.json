@@ -26,26 +26,23 @@
     },
     {
         "name": "guard",
-        "texture": "assets/Characters/peasant.png",
+        "texture": "assets/Characters/guard.png",
         "tile-width": 128,
         "tile-height": 128,
         "animations": {
             "idle": [
                 { "frame": 0, "time": 1.0 }
             ],
-            "walk": [
-                { "frame": 8, "time":  0.25 },
-                { "frame": 9, "time":  0.25 },
-                { "frame": 10, "time": 0.25 },
-                { "frame": 9, "time":  0.25 }
-            ],
             "attack": [
-                { "frame": 16, "time": 0.1 },
-                { "frame": 17, "time": 0.1 },
-                { "frame": 18, "time": 0.1 },
-                { "frame": 19, "time": 0.1 },
-                { "frame": 20, "time": 0.1 },
-                { "frame": 21, "time": 0.1 }
+                { "frame": 8, "time": 0.1 },
+                { "frame": 9, "time": 0.1 },
+                { "frame": 10, "time": 0.1 },
+                { "frame": 11, "time": 0.1 },
+                { "frame": 13, "time": 0.1 }
+            ],
+            "walk": [
+                { "frame": 16, "time":  0.25 },
+                { "frame": 17, "time":  0.25 }
             ]
         }
     },

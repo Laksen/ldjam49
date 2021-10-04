@@ -1,4 +1,11 @@
 {
+    "instructions": {
+        "start": "Beer brewing 101\n1. Collect barley\n2. Collect hops\n3. Collect water\n4. Use the boiler",
+        "icon": "icon-paper",
+        "animation": "idle",
+        "entries": [ ]
+    },
+
     "farmer": {
         "start": "Hello there brewer",
         "icon": "farmer",
@@ -140,5 +147,20 @@
                 "trigger": "king_angry"
             }
         ]
+    },
+
+    "dead": {
+        "start": "You have died...",
+        "icon": "player",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": []
+    },
+    "king-dead": {
+        "start": "The king has been killed.\nNow surely everything will be great.\n\nCongratulations",
+        "icon": "king",
+        "animation": "idle",
+        "no_exit": true,
+        "entries": []
     }
 }

@@ -27,6 +27,15 @@
         }
     },
     {
+        "name": "icon-paper",
+        "texture": "assets/paper.png",
+        "tile-width": 128,
+        "tile-height": 128,
+        "animations": {
+            "idle": [{ "frame": 0, "time": 1.0 }]
+        }
+    },
+    {
         "name": "icon-bucket",
         "texture": "assets/Icons/IconBucket.png",
         "tile-width": 64,

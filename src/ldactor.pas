@@ -104,7 +104,7 @@ var
 
 function GetName: string;
 
-procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double);
+procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double; AOnlyAnnoy: boolean);
 
 function SpawnCharacter(const AName, AType: string; ASector,AX,AY: integer): TLDCharacter;
 
@@ -162,7 +162,7 @@ begin
   result:='Bob';
 end;
 
-procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double);
+procedure DamageAt(AGiver: TLDCharacter; ASector: integer; APosition: TPVector; ADamage: double; AOnlyAnnoy: boolean);
 var
   sqrDist: double;
   ch: TJSArray;
@@ -180,7 +180,8 @@ begin
 
   for o in ch do
   begin
-    TLDCharacter(o).DealDamage(ADamage);
+    if not aonlyannoy then
+      TLDCharacter(o).DealDamage(ADamage);
 
     oo:=TLDCharacter(o);
     if oo<>player then
@@ -314,7 +315,7 @@ begin
       fAnimation:='idle';
 
       // Completed attack, damage nearby
-      DamageAt(Self, sector, position, Damage);
+      DamageAt(Self, sector, position, Damage, false);
     end;
 
   if not fAttacking then

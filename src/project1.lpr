@@ -382,6 +382,12 @@ begin
         end;
 
         case AItem.Name of
+          'icon-paper':
+            begin
+              TriggerDialog(nil, 'instructions');
+              RemoveInventory(aitem.name, 1);
+            end;
+
           'icon-beer-reg',
           'icon-beer-med',
           'icon-beer-strong',
@@ -587,6 +593,8 @@ begin
         begin
           if HasInventory('icon-scythe',1)  then
           begin
+            DamageAt(player, map.CurrentSector.id, player.position, 10, true);
+            //tldcharacter.DealDamage();
             targharvest.Harvest;
             // Todo: Anger farmer
 
@@ -769,10 +777,10 @@ begin
       Inventory.OnClickItem:=@ClickInventory;
 
       AddInventory('icon-beer-reg', 1);
-      AddInventory('icon-bucket', 1);
-      AddInventory('icon-scythe', 1);
+      //AddInventory('icon-bucket', 1);
+      //AddInventory('icon-scythe', 1);
 
-      AddInventory('icon-beer-strong', 10);
+      AddInventory('icon-paper', 1);
 
     ActionPanel:=TGUIPanel.Create;
     ActionPanel.SetSize(352,2,350, GUIHeight-2);
@@ -816,6 +824,11 @@ var
 begin
   inherited Update(ATimeMS);
   InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);
+
+  if (State=gsMain) and (not player.Alive) then
+    TriggerDialog(undefined, 'dead');
+  if (State=gsMain) and (not king.Alive) then
+    TriggerDialog(undefined, 'king-dead');
 
   x:=StatusLabel.Color;
   x.A:=x.A - (ATimeMS-fTime)/1000;
@@ -917,11 +930,13 @@ begin
 
   TResources.AddImage('assets/Characters/peasant.png');
   TResources.AddImage('assets/Characters/king.png');
-  TResources.AddImage('assets/guard.png');
+  TResources.AddImage('assets/Characters/guard.png');
   TResources.AddImage('assets/Characters/player.png');
   TResources.AddImage('assets/well.png');
   TResources.AddImage('assets/fireplace.png');
   TResources.AddImage('assets/castle.png');
+
+  TResources.AddImage('assets/paper.png');
 
   TResources.AddImage('assets/Icons/IconBullet.png');
   TResources.AddImage('assets/Icons/IconBucket.png');
