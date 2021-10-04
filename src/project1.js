@@ -6560,7 +6560,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       this.MainGUI.fPosition.$assign(pas.GameMath.TPVector.New(0,0,1));
       this.MainGuiPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       this.MainGuiPanel.SetSize(0,this.fHeight - 200,this.fWidth,200);
-      this.MainGuiPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(1,0,0,1.0));
+      this.MainGuiPanel.fBackGround.$assign(pas.GameBase.TGameColor.New(0.55,0.55,0.55,1.0));
       this.MainGUI.AddChild(this.MainGuiPanel);
       this.InvPanel = pas.guictrls.TGUIPanel.$create("Create$3");
       this.InvPanel.SetSize(0,2,350,200 - 2);
@@ -6787,7 +6787,7 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
     };
     this.AfterResize = function () {
       pas.GameBase.TGameBase.AfterResize.call(this);
-      this.Viewport.Projection = pas.GameMath.TPMatrix.$create("Ortho",[this.fWidth / 4,-this.fWidth / 4,this.fHeight / 4,-this.fHeight / 4,-10000,10000]);
+      this.Viewport.Projection = pas.GameMath.TPMatrix.$create("Ortho",[(this.fWidth / 4) * 1.5,(-this.fWidth / 4) * 1.5,(this.fHeight / 4) * 1.5,(-this.fHeight / 4) * 1.5,-10000,10000]);
       this.Viewport.ModelView = pas.GameMath.TPMatrix.$create("LookAt",[pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(450 / 2,450 / 2,0)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(300,-300,500)),pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New(0,0,-1))]);
       if (this.MainGUI !== null) {
         this.MainGUI.Resize(this.fWidth,this.fHeight);

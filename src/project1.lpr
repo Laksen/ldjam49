@@ -753,7 +753,7 @@ begin
 
   MainGuiPanel:=TGUIPanel.Create;
   MainGuiPanel.SetSize(0,Height-GUIHeight,Width,GUIHeight);
-  MainGuiPanel.BackGround:=TGameColor.New(1,0,0);
+  MainGuiPanel.BackGround:=TGameColor.New(0.55,0.55,0.55);
   MainGUI.AddChild(MainGuiPanel);
 
     InvPanel:=TGUIPanel.Create;
@@ -1039,7 +1039,7 @@ procedure TLD49Game.AfterResize;
 begin
   inherited AfterResize;
 
-  Viewport.Projection:=TPMatrix.Ortho(Width/4, -Width/4, Height/4, -Height/4, -10000, 10000);
+  Viewport.Projection:=TPMatrix.Ortho(Width/4*1.5, -Width/4*1.5, Height/4*1.5, -Height/4*1.5, -10000, 10000);
   Viewport.ModelView:=TPMatrix.LookAt(TPVector.New(450/2,450/2,0),
                                       TPVector.New(300,-300,500),
                                       TPVector.New(0,0,-1));
