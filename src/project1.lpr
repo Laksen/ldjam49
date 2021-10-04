@@ -683,6 +683,9 @@ begin
 
         sec.SetTile(x, y, typ);
 
+        for spawn in tjsarray(iff(o2['items'], tjsarray.new())) do
+          DropItem(string(spawn), sec, TPVector.new((x+random())*Config.SectorSize, (y+random())*Config.SectorSize));
+
         for spawn in tjsarray(iff(o2['spawn'], tjsarray.new())) do
         begin
           ch:=SpawnCharacter(GetName, string(spawn), sec.ID, x*Config.SectorSize,y*Config.SectorSize);

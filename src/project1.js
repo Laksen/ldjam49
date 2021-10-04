@@ -6505,8 +6505,12 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
             x = idx % pas.ldconfig.Config.SectorTiles;
             y = rtl.trunc(idx / pas.ldconfig.Config.SectorTiles);
             sec.SetTile$1(x,y,typ);
-            for (var $in2 = $mod.iff(o2["spawn"],new Array()), $l2 = 0, $end2 = rtl.length($in2) - 1; $l2 <= $end2; $l2++) {
+            for (var $in2 = $mod.iff(o2["items"],new Array()), $l2 = 0, $end2 = rtl.length($in2) - 1; $l2 <= $end2; $l2++) {
               spawn = $in2[$l2];
+              this.DropItem("" + spawn,sec,pas.GameMath.TPVector.$clone(pas.GameMath.TPVector.New((x + Math.random()) * pas.ldconfig.Config.SectorSize,(y + Math.random()) * pas.ldconfig.Config.SectorSize,0)));
+            };
+            for (var $in3 = $mod.iff(o2["spawn"],new Array()), $l3 = 0, $end3 = rtl.length($in3) - 1; $l3 <= $end3; $l3++) {
+              spawn = $in3[$l3];
               ch = pas.ldactor.SpawnCharacter(pas.ldactor.GetName(),"" + spawn,sec.fID,x * pas.ldconfig.Config.SectorSize,y * pas.ldconfig.Config.SectorSize);
               var $tmp1 = "" + spawn;
               if ($tmp1 === "farmer") {
