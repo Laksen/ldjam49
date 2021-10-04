@@ -6023,7 +6023,13 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
         } else if (selected["trigger"] != undefined) {
           this.State = 1;
           this.DialogStack.splice(this.DialogStack.length - 1);
-          this.WriteStatus("" + selected["trigger"]);
+          var $tmp = "" + selected["trigger"];
+          if ($tmp === "buy_harvest") {}
+          else if ($tmp === "buy_beer") {}
+          else if ($tmp === "give_beer") {}
+          else if ($tmp === "brew_pilsner") {}
+          else if ($tmp === "brew_ale") {}
+          else if ($tmp === "brew_porter") ;
         } else pas.System.Writeln("Dead end?!");
       };
     };
@@ -6431,7 +6437,20 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       return Result;
     };
     this.DoKeyPress = function (AKeyCode) {
-      if (AKeyCode === "Escape") this.SetCurrentAction(0);
+      var $tmp = AKeyCode;
+      if ($tmp === "Escape") {
+        this.SetCurrentAction(0)}
+       else if ($tmp === "Digit1") {
+        this.SetCurrentAction(0)}
+       else if ($tmp === "Digit2") {
+        this.SetCurrentAction(1)}
+       else if ($tmp === "Digit3") {
+        this.SetCurrentAction(2)}
+       else if ($tmp === "Digit4") {
+        this.SetCurrentAction(3)}
+       else if ($tmp === "Digit5") {
+        this.SetCurrentAction(4)}
+       else if ($tmp === "Digit6") this.SetCurrentAction(5);
     };
     this.DoClick = function (AX, AY, AButtons) {
       var p = pas.GameMath.TPVector.$new();
@@ -6518,13 +6537,14 @@ rtl.module("program",["System","Math","Web","webgl","JS","Classes","SysUtils","r
       pas.resources.TResources.AddString("assets\/dialog.json");
       pas.resources.TResources.AddString("assets\/config.json");
       pas.resources.TResources.AddString("assets\/map.json");
+      pas.ldsounds.AddSound("mus0",pas.resources.TResources.AddSound("assets\/Audio\/mus_song1.mp3"));
       pas.ldsounds.AddSound("rake",pas.resources.TResources.AddSound("assets\/Audio\/proc_rake.m4a"));
       pas.ldsounds.AddSound("drink",pas.resources.TResources.AddSound("assets\/Audio\/proc_drinkaah.m4a"));
       pas.resources.TResources.AddSound("assets\/Audio\/proc_burp.m4a");
       pas.resources.TResources.AddSound("assets\/Audio\/proc_clunk.m4a");
       pas.ldsounds.AddSound("guardattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_guardattack.m4a"));
       pas.ldsounds.AddSound("harvest",pas.resources.TResources.AddSound("assets\/Audio\/proc_harvest.m4a"));
-      pas.resources.TResources.AddSound("assets\/Audio\/proc_kingspeech.m4a");
+      pas.ldsounds.AddSound("kingattack",pas.resources.TResources.AddSound("assets\/Audio\/proc_kingspeech.m4a"));
       pas.ldsounds.AddSound("pickup",pas.resources.TResources.AddSound("assets\/Audio\/proc_pickup.m4a"));
       pas.ldsounds.AddSound("drop",pas.resources.TResources.AddSound("assets\/Audio\/proc_plop.m4a"));
     };

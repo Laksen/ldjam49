@@ -183,7 +183,16 @@ begin
       state:=gsMain;
                                                  
       DialogStack.splice(DialogStack.Length-1);
-      WriteStatus(string(selected['trigger']));
+
+      case string(selected['trigger']) of
+        'buy_harvest': ;
+        'buy_beer':;
+        'give_beer':;
+
+        'brew_pilsner': ;
+        'brew_ale': ;
+        'brew_porter': ;
+      end;
     end
     else
       writeln('Dead end?!');
@@ -725,7 +734,9 @@ end;
 procedure TLD49Game.Update(ATimeMS: double);
 begin
   inherited Update(ATimeMS);
-  InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);;
+  InvGoldLabel.Caption:=Format('Gold: %d', [Player.Gold]);
+
+
 end;
 
 function TLD49Game.GetElements: TJSArray;
@@ -739,8 +750,15 @@ end;
 
 procedure TLD49Game.DoKeyPress(AKeyCode: string);
 begin
-  if AKeyCode='Escape' then
-    CurrentAction:=aMove;
+  case AKeyCode of
+    'Escape': CurrentAction:=aMove;
+    'Digit1': CurrentAction:=aMove;
+    'Digit2': CurrentAction:=aAttack;
+    'Digit3': CurrentAction:=aTalk;
+    'Digit4': CurrentAction:=aUse;
+    'Digit5': CurrentAction:=aPickUp;
+    'Digit6': CurrentAction:=aDrop;
+  end;
 end;
 
 procedure TLD49Game.DoClick(AX, AY: double; AButtons: longword);
@@ -838,14 +856,16 @@ begin
 
   TResources.AddString('assets/map.json');
 
-  // Sounds
+  // Sounds                                                           
+  AddSound('mus0', TResources.AddSound('assets/Audio/mus_song1.mp3'));
+
   AddSound('rake', TResources.AddSound('assets/Audio/proc_rake.m4a'));
   AddSound('drink', TResources.AddSound('assets/Audio/proc_drinkaah.m4a'));
   TResources.AddSound('assets/Audio/proc_burp.m4a');
   TResources.AddSound('assets/Audio/proc_clunk.m4a');
   AddSound('guardattack', TResources.AddSound('assets/Audio/proc_guardattack.m4a'));
   AddSound('harvest', TResources.AddSound('assets/Audio/proc_harvest.m4a'));
-  TResources.AddSound('assets/Audio/proc_kingspeech.m4a');
+  AddSound('kingattack', TResources.AddSound('assets/Audio/proc_kingspeech.m4a'));
   AddSound('pickup', TResources.AddSound('assets/Audio/proc_pickup.m4a'));
   AddSound('drop', TResources.AddSound('assets/Audio/proc_plop.m4a'));
 end;
